@@ -1,0 +1,151 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <style type="text/css">
+div.sourceCode { overflow-x: auto; }
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code > span.dt { color: #902000; } /* DataType */
+code > span.dv { color: #40a070; } /* DecVal */
+code > span.bn { color: #40a070; } /* BaseN */
+code > span.fl { color: #40a070; } /* Float */
+code > span.ch { color: #4070a0; } /* Char */
+code > span.st { color: #4070a0; } /* String */
+code > span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code > span.ot { color: #007020; } /* Other */
+code > span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code > span.fu { color: #06287e; } /* Function */
+code > span.er { color: #ff0000; font-weight: bold; } /* Error */
+code > span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+code > span.cn { color: #880000; } /* Constant */
+code > span.sc { color: #4070a0; } /* SpecialChar */
+code > span.vs { color: #4070a0; } /* VerbatimString */
+code > span.ss { color: #bb6688; } /* SpecialString */
+code > span.im { } /* Import */
+code > span.va { color: #19177c; } /* Variable */
+code > span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code > span.op { color: #666666; } /* Operator */
+code > span.bu { } /* BuiltIn */
+code > span.ex { } /* Extension */
+code > span.pp { color: #bc7a00; } /* Preprocessor */
+code > span.at { color: #7d9029; } /* Attribute */
+code > span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code > span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code > span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+  </style>
+</head>
+<body>
+<h1 id="title">Title</h1>
+<p>JSON</p>
+<h2 id="author">Author</h2>
+<p>Amirouche Boubekki</p>
+<h2 id="status">Status</h2>
+<p>Draft</p>
+<h2 id="abstract">Abstract</h2>
+<p>This library describes a JavaScript Object Notation (JSON) parser and printer. It does support to stream parse JSON that is possibly bigger than memory.</p>
+<h2 id="rationale">Rationale</h2>
+<p>JSON is a defacto industry standard to exchange data.</p>
+<p>For best interoperability the sample implementation is based on <a href="https://tools.ietf.org/html/rfc7159">RFC7159</a>, and the tests are based on <a href="https://github.com/nst/JSONTestSuite/">JSONTestSuite</a>.</p>
+<p>The mapping between JSON types and Scheme objects is not trivial because a given mapping might not be the best for every situations. That is one of the reason why this library expose a stream reader, in order to allow users to specify the scheme representation and have efficient code.</p>
+<h2 id="specification">Specification</h2>
+<h3 id="json-error-obj-boolean"><code>(json-error? obj) → boolean</code></h3>
+<p>Returns <code>#t</code> is <code>OBJ</code> is an error object. This exception can be raised during <code>json-stream-read</code>, <code>json-read</code> or <code>json-write</code>.</p>
+<h3 id="json-error-reason-obj-string"><code>(json-error-reason obj) → string</code></h3>
+<p>Return a string explaining the reason of the error. This should be human readable.</p>
+<h3 id="json-null-obj-boolean"><code>(json-null? obj) → boolean</code></h3>
+<p>Return <code>#t</code> if <code>OBJ</code> is the scheme symbol <code>'null</code> representing in Scheme the JSON <code>null</code>. In any other cases, return <code>#f</code>.</p>
+<h3 id="json-stream-read-proc-port-unspecified"><code>(json-stream-read proc [port]) → unspecified</code></h3>
+<p>Streaming event-based JSON reader. <code>PORT</code> must be a textual input port. The default value of <code>PORT</code> is the value returned by the procedure <code>current-input-port</code>. The returned value is unspecified.</p>
+<p><code>json-stream-read</code> should raise an object that satisfy the predicate <code>json-error?</code> in cases where the JSON is invalid.</p>
+<p><code>json-stream-read</code> will call <code>PROC</code> with two arguments. The first argument is the event <code>type</code>, the second argument is the event <code>obj</code>. Since the value that can be taken by <code>obj</code> depends on the value of <code>type</code>, they are presented together in the following paragraph.</p>
+<p>The first arguments is noted <code>type</code>. It is a symbol. It can be the following:</p>
+<ul>
+<li><code>'json-structure</code></li>
+<li><code>'json-value</code></li>
+</ul>
+<p>The <code>obj</code> argument can take the following values dependings on <code>type</code>:</p>
+<ul>
+<li><p>If type is <code>'json-structure</code>, then <code>obj</code> can be:</p>
+<ul>
+<li><p><code>'array-open</code> symbol denoting that an array should be constructed.</p></li>
+<li><p><code>'array-close</code> symbol denoting that the construction of the array for which the last <code>'array-open</code> was emitted and not closed, is finished.</p></li>
+<li><p><code>'object-open'</code> symbol denoting that an object should be constructed. The object's key-value pairs are emitted in sequence like property list (plist). The keys will be produced by <code>(proc 'json-structure some-symbol)</code>, that is, the key is always a symbol. The production of the key is always followed by the production of a value. Otherwise, the JSON would be invalid and <code>json-stream-read</code> would raise error. The production of the value can be a <code>'json-value</code> but can also be <code>'json-structure</code> with <code>obj</code> strictly equivalent <code>'array-open</code> or <code>'object-open</code>. This events will be followed by other events. Eventually, an associated <code>'object-close</code> event is emitted.</p></li>
+<li><p><code>'object-close</code> symbol denoting that the construction of the object for which the last <code>object-open</code> was emitted and not closed, is finished.</p></li>
+</ul></li>
+<li><p>If type is <code>'json-value</code>, then <code>obj</code> is scheme object that can be of the following types:</p>
+<ul>
+<li><p>symbol</p></li>
+<li><p>number</p></li>
+<li><p>string</p></li>
+</ul></li>
+</ul>
+<p><strong>Note:</strong> This document does not prescribes a validating parser. But in cases where the input JSON is valid, <code>json-parse</code> must emit the correct sequence of events.</p>
+<p><strong>Note:</strong> Given <code>type</code> is <code>'json-value</code>, then there is two occasions where <code>obj</code> can be a symbol: 1) the JSON contains a <code>null</code> value, in that case <code>'null</code> symbol is produced; 2) In a JSON object, keys are produced with the type <code>'json-value</code> and the <code>obj</code> as a symbol. In particular the key <code>&quot;null&quot;</code> will be represented with <code>'null</code> symbol and JSON <code>null</code> too: that does not have bad consequences for the user.</p>
+<h4 id="example-one">Example One</h4>
+<p>Take for instance the following JSON text:</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript">[<span class="kw">true</span><span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="dv">42</span><span class="op">,</span> <span class="kw">null</span>]</code></pre></div>
+<p>It will produce the following calls to <code>PROC</code>:</p>
+<div class="sourceCode"><pre class="sourceCode scheme"><code class="sourceCode scheme">(proc &#39;json-structure &#39;array-open)
+(proc &#39;json-value <span class="dv">#t</span>)
+(proc &#39;json-value <span class="dv">#f</span>)
+(proc &#39;json-value <span class="dv">42</span>)
+(proc &#39;json-value &#39;null)
+(proc &#39;json-structure &#39;array-close)</code></pre></div>
+<h4 id="example-two">Example Two</h4>
+<p>Take for instance the following JSON text:</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript">[<span class="st">&quot;hello&quot;</span><span class="op">,</span> <span class="st">&quot;world&quot;</span><span class="op">,</span> <span class="op">{</span><span class="st">&quot;truth&quot;</span><span class="op">:</span> [<span class="dv">42</span>]<span class="op">}</span>]</code></pre></div>
+<p>It will produce the following calls to <code>PROC</code>:</p>
+<div class="sourceCode"><pre class="sourceCode scheme"><code class="sourceCode scheme">(proc &#39;json-structure &#39;array-open)
+(proc &#39;json-value <span class="st">&quot;hello&quot;</span>)
+(proc &#39;json-value <span class="st">&quot;world&quot;</span>)
+(proc &#39;json-structure &#39;object-open)
+(proc &#39;json-value &#39;truth)
+(proc &#39;json-structure &#39;array-open)
+(proc &#39;json-value <span class="dv">42</span>)
+(proc &#39;json-structure &#39;array-close)
+(proc &#39;json-structure &#39;object-close)
+(proc &#39;json-structure &#39;array-close)</code></pre></div>
+<h3 id="json-read-port-object"><code>(json-read [port]) → object</code></h3>
+<p>JSON reader procedure. <code>PORT</code> must be a textual input port. The default value of <code>PORT</code> is the value returned by the procedure <code>current-input-port</code>. The returned value is a scheme object.</p>
+<p>The mapping between JSON types and Scheme objects is the following:</p>
+<ul>
+<li><code>null</code> → the symbol <code>'null</code></li>
+<li><code>true</code> → <code>#t</code></li>
+<li><code>false</code> → <code>#f</code></li>
+<li>number → number</li>
+<li>string → string</li>
+<li>array → vector</li>
+<li>object → association list with keys that are symbols</li>
+</ul>
+<h3 id="json-write-obj-port-unspecified"><code>(json-write obj [port]) → unspecified</code></h3>
+<p>JSON writer procedure. <code>PORT</code> must be a textual output port. The default value of <code>PORT</code> is the value returned by the procedure <code>current-output-port</code>. The returned value is unspecified.</p>
+<p><code>json-write</code> will validate that <code>OBJ</code> can be serialized into JSON before writing to <code>PORT</code>. In the case where <code>OBJ</code> is not an object or composition of the following types, an error that satisfy <code>json-error?</code> is raised:</p>
+<ul>
+<li>symbol <code>'null</code></li>
+<li>boolean</li>
+<li>real number</li>
+<li>string</li>
+<li>vector</li>
+<li>association list</li>
+</ul>
+<h2 id="implementation">Implementation</h2>
+<p>Link to the sample implementation</p>
+<h2 id="acknowledgements">Acknowledgements</h2>
+<p>Give credits where credits is due.</p>
+<h2 id="copyright">Copyright</h2>
+<p>Copyright (C) Amirouche Boubekki (2020).</p>
+<p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the &quot;Software&quot;), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
+<p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
+<p>THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+</body>
+</html>
