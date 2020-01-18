@@ -1,0 +1,16 @@
+* SRFI 180: JSON
+
+** by Amirouche Boubekki
+
+This repository hosts [[https://srfi.schemers.org/srfi-180/][SRFI 180]]: JSON, a [[https://srfi.schemers.org/][Scheme Request for Implementation]].
+
+This SRFI is in /draft/ status.
+
+The full documentation for this SRFI can be found in the [[https://srfi.schemers.org/srfi-180/srfi-180.html][SRFI Document]].
+
+If you'd like to participate in the discussion of this SRFI, or report issues with it, please [[https://srfi.schemers.org/srfi-180/][join the SRFI-180 mailing list]] and send your message there.
+
+Thank you.
+
+
+[[mailto:srfi-editors@srfi.schemers.org][The SRFI Editors]]
