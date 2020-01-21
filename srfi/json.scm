@@ -24,6 +24,16 @@
   (unless (char=? value other)
     (raise (make-json-error "Unexpected character."))))
 
+;;
+;; TODO: replace PORT with generator.  And avoid the use of peek-char.
+;;
+;; TODO: make the json-tokenize an argument of json-stream-read and
+;; json-foldts if any, to allow to customize the tokenizer possibly
+;; making it faster.  Remove the unicode shenanigan during string
+;; parsing, only handle escape sequences, do not call `expect`.
+;;
+;; TODO: return a generator.
+;;
 (define (json-tokenize callback port)
 
   (define (maybe-ignore-whitespace port)
@@ -224,7 +234,7 @@
             (maybe-ignore-whitespace port)
             (loop (peek-char port)))))))
 
-(define (%json-stream-read proc port)
+(define (%json-stream-read port-or-generator)
 
   (define (read-array-continue callback obj k)
     (cond
@@ -362,7 +372,6 @@
   (define (make-machine callback)
     (let ((k (lambda (obj) (start callback obj))))
       (lambda (obj)
-        ;(pk 'parse obj)
         (unless (eq? obj 'eof)
           (set! k (k obj))))))
 
@@ -372,10 +381,50 @@
 
   (json-tokenize (make-machine proc) port))
 
-(define json-stream-read
+;;
+;; (foldts fdown fup fhere seed)
+;;
+;; - fhere is applied to the leafs of the tree
+;;
+;; - fdown is invoked when a non-leaf node is entered before any of
+;; the node's children are visited. fdown action has to generate a
+;; seed to be passed to the first visited child of the node.
+;;
+;; - fup is invoked after all the children of a node have been
+;; seen. The first argument is the local state at the moment the
+;; traversal process enters the branch rooted at the current node. The
+;; second argument is the result of visiting all child branches.  The
+;; action of fup isto produce a seed that is taken to be the state of
+;; the traversal after the process leave the currents the current
+;; branch.
+;;
+;; (define (foldts fdown fup fhere seed tree)
+;;   (cond
+;;    ((null? tree) seed)
+;;    ((not (pair? tree))		; An atom
+;;     (fhere seed tree))
+;;    (else
+;;     (let loop ((kid-seed (fdown seed tree))
+;;                (kids (cdr tree)))
+;;       (if (null? kids)
+;; 	  (fup seed kid-seed tree)
+;; 	  (loop (foldts fdown fup fhere kid-seed (car kids))
+;; 		(cdr kids)))))))
+;;
+
+;; (define (json-fold fdown fup fhere seed tokenizer)
+;;   (let ((token (tokenizer)))
+;;     (if (eof-object? token)
+;;         seed
+;;         (case token
+;;           ((
+
+(define json-read-generator
   (case-lambda
-    ((proc) (json-stream-read proc (current-input-port)))
-    ((proc port) (%json-stream-read proc port))))
+    (() (json-stream-read (current-input-port)))
+    ((port-or-generator) (json-stream-read port-or-generator json-tokenize))
+    ((port-or-generator tokenize)
+     (%json-read-generator Port-or-generator tokenize))))
 
 (define (%json-read port)
 
