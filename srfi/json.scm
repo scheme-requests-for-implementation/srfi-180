@@ -437,7 +437,7 @@
     (case type
       ((json-structure)
        (case obj
-         ((object-close) (return out))
+         ((object-close) (return (reverse out)))
          (else (raise (make-json-error "Invalid object.")))))
       ((json-value)
        (let ((key obj))
