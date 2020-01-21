@@ -162,9 +162,6 @@
                     string))
 
   (define (maybe-read-number callback port)
-    ;; TODO: implement real json number parser, do not rely on scheme
-    ;; string->number.
-
     ;; accumulate chars until a control char or whitespace is reached,
     ;; then try to intrepret it as number using string->number
 
@@ -190,8 +187,8 @@
           (begin (read-char port)
                  (loop (peek-char port) (cons char out))))))
 
-
   (define (%read-error? x)
+    ;; XXX: non portable
     (and (error-object? x) (memq (exception-kind x) '(user read read-incomplete)) #t))
 
   (assume (procedure? callback))
@@ -199,7 +196,6 @@
 
   ;; gist
   (guard (ex ((%read-error? ex) (raise (make-json-error "Read error!"))))
-
     (when (eof-object? (peek-char port))
       (raise (make-json-error "Empty JSON text.")))
 
@@ -373,6 +369,7 @@
   ;; gist
   (assume (and (textual-port? port) (input-port? port)))
   (assume (procedure? proc))
+
   (json-tokenize (make-machine proc) port))
 
 (define json-stream-read
