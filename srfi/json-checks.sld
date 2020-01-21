@@ -320,7 +320,16 @@
           y_structure_string_empty.json
           y_structure_trailing_newline.json
           y_structure_true_in_array.json
-          y_structure_whitespace_array.json)
+          y_structure_whitespace_array.json
+          ;; scheme specific
+          n_+inf.0
+          n_-inf.0
+          n_complex
+          n_-nan.0
+          n_+nan.0
+          n_exact_not_integer
+
+          )
 
   (import (scheme base))
   (import (scheme file))
@@ -346,6 +355,12 @@
           (json-write (call-with-input-file filepath json-read) port)))
        (lambda (port)
          (json-read port))))
+
+    (define (json-string->obj string)
+      (call-with-input-string string json-read))
+
+    (define (obj->json-string obj)
+      (call-with-output-string (lambda (port) (json-write obj))))
 
     (define parse json->obj->json->obj)
 
@@ -1347,5 +1362,25 @@
 
     (define y_structure_whitespace_array.json
       (check #() (parse "./files/y_structure_whitespace_array.json")))
+
+    ;; Scheme specific tests
+
+    (define n_+inf.0
+      (check-raise json-error? (obj->json-string +inf.0)))
+
+    (define n_-inf.0
+      (check-raise json-error? (obj->json-string -inf.0)))
+
+    (define n_complex
+      (check-raise json-error? (obj->json-string 3+14i)))
+
+    (define n_-nan.0
+      (check-raise json-error? (obj->json-string +nan.0)))
+
+    (define n_+nan.0
+      (check-raise json-error? (obj->json-string -nan.0)))
+
+    (define n_exact_not_integer
+      (check-raise json-error? (obj->json-string 314/100)))
 
     ))

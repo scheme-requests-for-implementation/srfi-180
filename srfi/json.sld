@@ -7,6 +7,7 @@
           json-write)
 
   (import (scheme base)
+          (scheme inexact)
           (scheme case-lambda)
           (scheme char)
           (scheme text)
