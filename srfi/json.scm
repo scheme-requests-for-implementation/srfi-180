@@ -1,4 +1,4 @@
-#;(define (pk . args)
+(define (pk . args)
   (car (reverse args)))
 
 (define (json-null? obj)
@@ -30,6 +30,8 @@
   (define (%read-error? x)
     ;; XXX: non portable
     (and (error-object? x) (memq (exception-kind x) '(user read read-incomplete)) #t))
+
+  (define offset 0)
 
   (lambda ()
     (guard (ex ((%read-error? ex) (raise (make-json-error "Read error!"))))
