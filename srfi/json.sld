@@ -2,7 +2,8 @@
 
   (export json-null?
           json-error?
-          json-stream-read
+          json-fold
+          json-generator-read
           json-read
           json-write)
 

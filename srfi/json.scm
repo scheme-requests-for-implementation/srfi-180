@@ -1,3 +1,6 @@
+#;(define (pk . args)
+  (car (reverse args)))
+
 (define (json-null? obj)
   (eq? obj 'null))
 
@@ -7,7 +10,6 @@
   (reason json-error-reason))
 
 (define (json-whitespace? char)
-  (assume (char? char))
   (case char
     ((#\x20 ; Space
       #\x09 ; Horizontal tab
@@ -31,11 +33,17 @@
 
   (lambda ()
     (guard (ex ((%read-error? ex) (raise (make-json-error "Read error!"))))
-      (read-char port))))
+      (pk 'read-char (read-char port)))))
 
-;;
-;; TODO: return a generator.
-;;
+(define (gcons head generator)
+  ;; returns a generator that will yield, HEAD the first time, and
+  ;; after than, it will yields items from GENERATOR.
+  (let ((head? #t))
+    (lambda ()
+      (if head?
+          (begin (set! head? #f) head)
+          (generator)))))
+
 (define (json-tokens generator)
 
   (define (maybe-ignore-whitespace generator)
@@ -45,20 +53,20 @@
           char)))
 
   (define (expect-null generator)
-    (expect (read-char port) #\u)
-    (expect (read-char port) #\l)
-    (expect (read-char port) #\l))
+    (expect (generator) #\u)
+    (expect (generator) #\l)
+    (expect (generator) #\l))
 
   (define (expect-true generator)
-    (expect (read-char port) #\r)
-    (expect (read-char port) #\u)
-    (expect (read-char port) #\e))
+    (expect (generator) #\r)
+    (expect (generator) #\u)
+    (expect (generator) #\e))
 
   (define (expect-false generator)
-    (expect (read-char port) #\a)
-    (expect (read-char port) #\l)
-    (expect (read-char port) #\s)
-    (expect (read-char port) #\e))
+    (expect (generator) #\a)
+    (expect (generator) #\l)
+    (expect (generator) #\s)
+    (expect (generator) #\e))
 
   (define (maybe-char generator)
     (let ((char (generator)))
@@ -134,7 +142,7 @@
                                                        (append chars
                                                                out))))
                                          ;; This is another unicode char
-                                         (loop-unicode (read-unicode-escape port)
+                                         (loop-unicode (read-unicode-escape generator)
                                                        (cons (integer->char code1) chars))))
                                    ;; The escaped unicode char is
                                    ;; parsed, need to parse another
@@ -149,7 +157,7 @@
                 (else (raise (make-json-error "Unexpected escaped sequence."))))))
           (cond
            ((char=? char #\")
-            (callback (list->string (reverse out))))
+            (list->string (reverse out)))
            (else
             (loop (generator) (cons char out)))))))
 
@@ -177,8 +185,8 @@
               (char=? char #\])
               (char=? char #\}))
           (let ((string (list->string (reverse out))))
-            (or (and (valid-number? string)
-                     (string->number string))
+            (if (valid-number? string)
+                (values (string->number string) char)
                 (raise (make-json-error "Invalid number."))))
           (loop (generator) (cons char out)))))
 
@@ -190,49 +198,42 @@
         eof-object  ;; return an empty generator
         (begin
 
-          ;; ignore UTF-8 BOM if any
-          (when (char=? char #\xFEFF)
-            (set! char (generator)))
+          (unless (char=? char #\xFEFF)
+            ;; if it is not a UTF-8 BOM, put back the char in front of
+            ;; the generator
+            (set! generator (gcons char generator)))
 
-          (when (json-whitespace? char)
-            (set! char (maybe-ignore-whitespace generator)))
+          (lambda ()
 
-          (let loop ((char char))
-            (lambda ()
-              (if (eof-object? char)
-                  char ;; return that eof-object
-                  (begin
-                    (case char
-                      ((#\n) (expect-null generator) 'null)
-                      ((#\t) (expect-true generator) #t)
-                      ((#\f) (expect-false generator) #f)
-                      ((#\:) 'colon)
-                      ((#\,) 'comma)
-                      ((#\[) 'array-open)
-                      ((#\]) 'array-close)
-                      ((#\{) 'object-open)
-                      ((#\}) 'object-close)
-                      ((#\") (read-json-string generator))
-                      (else (maybe-read-number generator)))
-                    (loop (maybe-ignore-whitespace generator))))))))))
+            (define char (maybe-ignore-whitespace generator))
+
+            (if (eof-object? char)
+                char ;; return that eof-object
+                (case char
+                  ((#\n) (expect-null generator) 'null)
+                  ((#\t) (expect-true generator) #t)
+                  ((#\f) (expect-false generator) #f)
+                  ((#\:) 'colon)
+                  ((#\,) 'comma)
+                  ((#\[) 'array-start)
+                  ((#\]) 'array-end)
+                  ((#\{) 'object-start)
+                  ((#\}) 'object-end)
+                  ((#\") (read-json-string generator))
+                  (else
+                   (call-with-values (lambda () (maybe-read-number (gcons char generator)))
+                     (lambda (number next)
+                       (set! generator (gcons next generator))
+                       number))))))))))
 
 (define (%json-generator-read tokens)
-
-  (define (gcons head generator)
-    ;; returns a generator that will yield, HEAD the first time, and
-    ;; after than, it will yields items from GENERATOR.
-    (let ((head? #t))
-      (lambda ()
-        (if head?
-            (begin (set! head? #f) head)
-            (generator)))))
 
   (define (array-maybe-continue tokens k)
     (lambda ()
       (let ((token (tokens)))
         (case token
           ((comma) (start tokens (array-maybe-continue tokens k)))
-          ((array-close) (values '(json-structure . array-close) k))
+          ((array-end) (values '(json-structure . array-end) k))
           (else (raise (make-json-error "Invalid array, expected comma or array close.")))))))
 
   (define (array-start tokens k)
@@ -246,11 +247,11 @@
     (lambda ()
       (let ((token (tokens)))
         (case token
-          ((object-close) (values '(json-structure . object-close) k))
+          ((object-end) (values '(json-structure . object-end) k))
           ((comma) (let ((token (tokens)))
                      (unless (string? token)
                        (raise "Invalid object, expected an object key"))
-                     (values (cons 'json-value (string->symbol token))
+                     (values (cons 'json-value token)
                              (object-value tokens k))))
           (else (raise (make-json-error "Invalid object, expected comma or object close.")))))))
 
@@ -265,9 +266,9 @@
     (lambda ()
       (let ((token (tokens)))
         (cond
-         ((eq? token 'object-close) (values '(json-structure . object-close) k))
+         ((eq? token 'object-end) (values '(json-structure . object-end) k))
          ((string? token)
-          (values (cons 'json-value (string->symbol token))
+          (values (cons 'json-value token)
                   (object-value tokens k)))
          (else (raise (make-json-error "Invalid object, expected object key or object close.")))))))
 
@@ -279,31 +280,32 @@
             (string? token)
             (boolean? token))
         (values (cons 'json-value token) k))
-     ((eq? token 'array-open)
+     ((eq? token 'array-start)
       (values '(json-structure . array-start) (array-start tokens k)))
-     ((eq? token 'object-open)
+     ((eq? token 'object-start)
       (values '(json-structure . object-start) (object-start tokens k)))
      (else (raise (make-json-error "Is it JSON text?!"))))))
 
-  (define (top-level-json-eof)
+  (define (end-of-json-sequence)
     ;; json-generator-read returns a generator that reads one
     ;; top-level json. If there is more than one top-level json value
     ;; in the generator separated with space as it is the case of
     ;; json-lines, you need to call json-generator-read with the same
     ;; port or generator.
-    (values eof-object top-level-json-eof))
+    (values (eof-object) #f))
 
   (define (make-trampoline-generator tokens)
-    (let loop ((continuation (lambda () (start tokens top-level-json-eof))))
+    (let ((continuation (lambda () (start tokens end-of-json-sequence))))
       (lambda ()
-        (call-with-values continuation
-          (lambda (new-continuation event)
-            (set! continuation new-continuation)
-            event)))))
+        (when continuation
+          (call-with-values continuation
+            (lambda (event new-continuation)
+              (set! continuation new-continuation)
+              (pk 'event event)))))))
 
   ;; gist
 
-  (assume? (procedure? generator))
+  (assume (procedure? tokens))
 
   (make-trampoline-generator tokens))
 
@@ -316,9 +318,9 @@
     ((port-or-generator)
      (cond
       ((procedure? port-or-generator)
-       (%json-generator-read (json-tokenize port-or-generator)))
+       (%json-generator-read (json-tokens port-or-generator)))
       ((and (textual-port? port-or-generator) (input-port? port-or-generator))
-       (%json-generator-read (json-tokenize (port->generator port-or-generator))))
+       (%json-generator-read (json-tokens (port->generator port-or-generator))))
       (else (error 'json json-generator-read-error port-or-generator))))))
 
 ;; XXX: foldts is not used. It was copied here for documentation
@@ -349,34 +351,74 @@
       (loop (foldts fdown fup fhere kid-seed (car kids))
         (cdr kids)))))))
 
+;; ;; This is direct style definition of json-fold.  It is not tail
+;; ;; recursive, hence consume the stack.
+;;
+;; (define (json-fold array-start array-end object-start object-end fhere seed events)
+;;   (let loop ((seed seed))
+;;     (let ((event (events)))
+;;       (if (eof-object? event)
+;;           seed
+;;           (case (car (event))
+;;             ((json-value) (loop (fhere (cdr event) seed)))
+;;             ((json-structure)
+;;              (case (cdr event)
+;;                ((array-end) seed)
+;;                ((array-start) (array-end (json-fold array-start
+;;                                                     array-end
+;;                                                     object-start
+;;                                                     object-end
+;;                                                     fhere
+;;                                                     (array-start seed)
+;;                                                     events)
+;;                                          seed))
+;;                ((object-end) seed)
+;;                ((object-start) (object-end (json-fold array-start
+;;                                                       array-end
+;;                                                       object-start
+;;                                                       object-end
+;;                                                       fhere
+;;                                                       (object-start seed)
+;;                                                       events)
+;;                                            seed))
+;;                (else (error 'json "Oops!")))))))))
+
 (define (json-fold array-start array-end object-start object-end fhere seed events)
-  (let loop ((seed seed))
-    (let ((event (events)))
-      (if (eof-object? event)
-          seed
-          (case (car (event))
-            ((json-value) (loop (fhere (cdr event) seed)))
-            ((json-structure)
-             (case (cdr event)
-               ((array-end) seed)
-               ((array-start) (array-end (json-fold array-start
-                                                    array-end
-                                                    object-start
-                                                    object-end
-                                                    fhere
-                                                    (array-start seed)
-                                                    events)
-                                         seed))
-               ((object-end) seed)
-               ((object-start) (object-end (json-fold array-start
-                                                      array-end
-                                                      object-start
-                                                      object-end
-                                                      fhere
-                                                      (object-start seed)
-                                                      events)
-                                           seed))
-               (else (error 'json "Oops!")))))))))
+
+  (define (ruse seed k)
+    (lambda ()
+      (let loop ((seed seed))
+        (let ((event (events)))
+          (pk 'ruse-event event)
+          (if (eof-object? event)
+              (begin (k seed) #f)
+              (case (car event)
+                ((json-value) (loop (fhere (cdr event) seed)))
+                ((json-structure)
+                 (case (cdr event)
+                   ;; termination cases
+                   ((array-end) (k seed) #f)
+                   ((object-end) (k seed) #f)
+                   ;; recursion
+                   ((array-start) (ruse (array-start seed)
+                                        (lambda (out) (loop (array-end out seed)))))
+                   ((object-start) (ruse (object-start seed)
+                                         (lambda (out) (loop (object-end out seed)))))
+                   (else (error 'json "Oops0!"))))))))))
+
+  (define (make-trampoline-fold k)
+    (let ((thunk (ruse seed k)))
+      (let loop ((thunk thunk))
+        (when thunk
+          (loop (thunk))))))
+
+  (define %unset '(unset))
+
+  (let ((out %unset))
+    (make-trampoline-fold (lambda (out*) (set! out out*)))
+    (if (eq? out %unset)
+        (error 'json "Oops1!")
+        out)))
 
 (define (%json-read port-or-generator)
 
@@ -394,14 +436,15 @@
   (define (object-start seed)
     '())
 
-  (define (plist->alist items)
-    ;; items is a list of even items, otherwise json-read-generator
-    ;; would have raised a json-error?
-    (let loop ((items items)
+  (define (plist->alist plist)
+    ;; PLIST is a list of even items, otherwise json-read-generator
+    ;; would have raised a json-error.  json-generator-read is
+    ;; validating.
+    (let loop ((plist plist)
                (out '()))
-      (if (null? items)
-          out
-          (loop (cddr items) (cons (cons (car items) (cadr items)) out)))))
+      (if (null? plist)
+          out ;; TODO: maybe use reverse
+          (loop (cddr plist) (cons (cons (string->symbol (cadr plist)) (car plist)) out)))))
 
   (define (object-end plist seed)
     (let ((alist (plist->alist plist)))
@@ -409,7 +452,10 @@
           alist
           (cons alist seed))))
 
-  (define fhere values)
+  (define (fhere obj seed)
+    (if (eq? seed %root)
+        obj
+        (cons obj seed)))
 
   (let ((events (json-generator-read port-or-generator)))
     (json-fold array-start array-end object-start object-end fhere %root events)))
