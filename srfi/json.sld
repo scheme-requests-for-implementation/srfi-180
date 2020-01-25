@@ -11,6 +11,7 @@
           (scheme case-lambda)
           (scheme char)
           (scheme text)
+          (scheme write)
           (check)
           (srfi 145)
           (srfi 151)

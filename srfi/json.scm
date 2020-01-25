@@ -6,6 +6,14 @@
   json-error?
   (reason json-error-reason))
 
+(define (written obj)
+  (call-with-port (open-output-string)
+                  (lambda (out) (write obj out) (get-output-string out))))
+
+(define (invalid-object-value obj)
+  (raise (make-json-error
+          (string-append "Invalid object value: " (written obj) "."))))
+
 (define (json-whitespace? char)
   (assume (char? char))
   (case char
@@ -326,7 +334,7 @@
                             ;; continue!
                             (lambda (obj)
                               (read-object-maybe-continue callback obj k)))))
-     (else (raise (make-json-error "Invalid object value.")))))
+     (else (invalid-object-value obj))))
 
   (define (read-object-colon callback obj k)
     (if (eq? obj 'colon)
@@ -424,14 +432,14 @@
                                                      type
                                                      obj
                                                      return))))))
-         (else (raise (make-json-error "Invalid object value.")))))
+         (else (invalid-object-value obj))))
       ((json-value)
        (let ((value obj))
          (lambda (type obj) (read-object-maybe-key (cons (cons key value) out)
                                                     type
                                                     obj
                                                     return))))
-      (else (raise (make-json-error "Invalid object value")))))
+      (else (invalid-object-value obj))))
 
   (define (read-object-maybe-key out type obj return)
     (case type
