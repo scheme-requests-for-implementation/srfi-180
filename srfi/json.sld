@@ -3,6 +3,7 @@
   (export json-null?
           json-error?
           json-stream-read
+          json-error-reason
           json-read
           json-write)
 
