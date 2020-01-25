@@ -421,6 +421,13 @@
     (case type
       ((json-structure)
        (case obj
+         ((object-open)
+          (lambda (type obj)
+            (read-object-maybe-key '()
+                                   type
+                                   obj
+                                   (lambda (value)
+                                     (return (cons (cons key value) out))))))
          ((array-open)
           (lambda (type obj)
             (read-array '()
