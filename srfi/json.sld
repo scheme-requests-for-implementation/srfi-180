@@ -15,7 +15,9 @@
           (check)
           (srfi 145)
           (srfi 151)
-          (chibi ast)
           (chibi regexp))
+
+  (cond-expand (chibi (import (chibi ast)))
+               (else))
 
   (include "json.scm"))

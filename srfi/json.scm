@@ -200,7 +200,11 @@
 
 
   (define (%read-error? x)
-    (and (error-object? x) (memq (exception-kind x) '(user read read-incomplete)) #t))
+    (and (error-object? x)
+         (cond-expand
+           (chibi (memq (exception-kind x) '(user read read-incomplete)))
+           (else #f))
+         #t))
 
   (assume (procedure? callback))
   (assume (and (textual-port? port) (input-port? port)))
