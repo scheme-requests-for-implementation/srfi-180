@@ -21,7 +21,7 @@
                ((library (srfi 151))
                 (import (only (srfi 151) arithmetic-shift bitwise-ior))))
 
-  (cond-expand (chibi (import (chibi ast)))
+  (cond-expand (chibi (import (only (chibi ast) exception-kind)))
                (else))
 
   (include "json.scm"))
