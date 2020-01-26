@@ -3,6 +3,7 @@
   (export json-null?
           json-error?
           json-stream-read
+          json-error-reason
           json-read
           json-write)
 
@@ -10,10 +11,17 @@
           (scheme case-lambda)
           (scheme char)
           (scheme text)
+          (scheme write)
           (check)
           (srfi 145)
-          (srfi 151)
-          (chibi ast)
           (chibi regexp))
+
+  (cond-expand ((library (srfi 60))
+                (import (only (srfi 60) arithmetic-shift bitwise-ior)))
+               ((library (srfi 151))
+                (import (only (srfi 151) arithmetic-shift bitwise-ior))))
+
+  (cond-expand (chibi (import (only (chibi ast) exception-kind)))
+               (else))
 
   (include "json.scm"))
