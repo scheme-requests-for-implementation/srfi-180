@@ -14,8 +14,12 @@
           (scheme write)
           (check)
           (srfi 145)
-          (srfi 151)
           (chibi regexp))
+
+  (cond-expand ((library (srfi 60))
+                (import (only (srfi 60) arithmetic-shift bitwise-ior)))
+               ((library (srfi 151))
+                (import (only (srfi 151) arithmetic-shift bitwise-ior))))
 
   (cond-expand (chibi (import (chibi ast)))
                (else))
