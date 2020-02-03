@@ -337,8 +337,8 @@
 
 (define (json-fold array-start array-end object-start object-end fhere seed events)
 
-  ;; json-fold is inspired from the above foldts definition, it is
-  ;; built in continuation-passing-style.
+  ;; json-fold is inspired from the above foldts definition, unlike
+  ;; the above definition, it is continuation-passing-style.
 
   (define (ruse seed k)
     (lambda ()
