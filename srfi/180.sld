@@ -16,7 +16,11 @@
           (scheme write)
           (check)
           (srfi 145)
-          (srfi 151)
           (srfi 180 helpers))
+
+  (cond-expand ((library (srfi 60))
+                (import (only (srfi 60) arithmetic-shift bitwise-ior)))
+               ((library (srfi 151))
+                (import (only (srfi 151) arithmetic-shift bitwise-ior))))
 
   (include "180/body.scm"))
