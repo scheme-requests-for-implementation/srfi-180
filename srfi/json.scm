@@ -1,3 +1,6 @@
+(define (pk . args)
+  (car (reverse args)))
+
 (define (json-null? obj)
   (eq? obj 'null))
 
@@ -7,7 +10,6 @@
   (reason json-error-reason))
 
 (define (json-whitespace? char)
-  (assume (char? char))
   (case char
     ((#\x20 ; Space
       #\x09 ; Horizontal tab
@@ -24,50 +26,63 @@
   (unless (char=? value other)
     (raise (make-json-error "Unexpected character."))))
 
-(define (json-tokenize callback port)
+(define (port->generator port)
+  (define (%read-error? x)
+    ;; TODO: move to a helper library
+    (and (error-object? x) (memq (exception-kind x) '(user read read-incomplete)) #t))
 
-  (define (maybe-ignore-whitespace port)
-    (let loop ((char (peek-char port)))
-      (unless (eof-object? char)
-        (when (json-whitespace? char)
-          (read-char port)
-          (loop (peek-char port))))))
+  (define offset 0)
 
-  (define (read-null callback port)
-    (expect (read-char port) #\n)
-    (expect (read-char port) #\u)
-    (expect (read-char port) #\l)
-    (expect (read-char port) #\l)
-    (callback 'null))
+  (lambda ()
+    (guard (ex ((%read-error? ex) (raise (make-json-error "Read error!"))))
+      (pk 'read-char (read-char port)))))
 
-  (define (read-true callback port)
-    (expect (read-char port) #\t)
-    (expect (read-char port) #\r)
-    (expect (read-char port) #\u)
-    (expect (read-char port) #\e)
-    (callback #t))
+(define (gcons head generator)
+  ;; returns a generator that will yield, HEAD the first time, and
+  ;; after than, it will yield items from GENERATOR.
+  (let ((head? #t))
+    (lambda ()
+      (if head?
+          (begin (set! head? #f) head)
+          (generator)))))
 
-  (define (read-false callback port)
-    (expect (read-char port) #\f)
-    (expect (read-char port) #\a)
-    (expect (read-char port) #\l)
-    (expect (read-char port) #\s)
-    (expect (read-char port) #\e)
-    (callback #f))
+(define (json-tokens generator)
 
-  (define (maybe-read-char port)
-    (let ((char (read-char port)))
+  (define (maybe-ignore-whitespace generator)
+    (let loop ((char (generator)))
+      (if (json-whitespace? char)
+          (loop (generator))
+          char)))
+
+  (define (expect-null generator)
+    (expect (generator) #\u)
+    (expect (generator) #\l)
+    (expect (generator) #\l))
+
+  (define (expect-true generator)
+    (expect (generator) #\r)
+    (expect (generator) #\u)
+    (expect (generator) #\e))
+
+  (define (expect-false generator)
+    (expect (generator) #\a)
+    (expect (generator) #\l)
+    (expect (generator) #\s)
+    (expect (generator) #\e))
+
+  (define (maybe-char generator)
+    (let ((char (generator)))
       (when (eof-object? char)
         (raise (make-json-error "Unexpected end-of-file.")))
       (when (char=? char #\")
         (raise (make-json-error "Unexpected end of string.")))
       char))
 
-  (define (read-unicode-escape port)
-    (let* ((one (maybe-read-char port))
-           (two (maybe-read-char port))
-           (three (maybe-read-char port))
-           (four (maybe-read-char port)))
+  (define (read-unicode-escape generator)
+    (let* ((one (maybe-char generator))
+           (two (maybe-char generator))
+           (three (maybe-char generator))
+           (four (maybe-char generator)))
       (let ((out (string->number (list->string (list one two three four)) 16)))
         (if out
             out
@@ -75,81 +90,81 @@
 
   (define ash arithmetic-shift)
 
-  (define (read-json-string callback port)
-    (read-char port) ;; "
-    (let loop ((char (peek-char port))
+  (define (read-json-string generator)
+    (let loop ((char (generator))
                (out '()))
+
       (when (eof-object? char)
         (raise (make-json-error "Unexpected end of file.")))
+
       (when (or (char=? char #\x00)
                 (char=? char #\newline)
                 (char=? char #\tab))
         (raise (make-json-error "Unescaped control char.")))
+
       ;; XXX: Here be dragons.
       (if (char=? char #\\)
           (begin
-            (read-char port)
-            (let loop-unescape ((char (read-char port))
+            (let loop-unescape ((char (generator))
                                 (chars-unescaped '()))
               (case char
-                ((#\" #\\ #\/) (loop (peek-char port)
+                ((#\" #\\ #\/) (loop (generator)
                                      (cons char (append chars-unescaped
                                                         out))))
-                ((#\b) (loop (peek-char port) (cons #\backspace
+                ((#\b) (loop (generator) (cons #\backspace
                                                     (append chars-unescaped
                                                             out))))
-                ((#\f) (loop (peek-char port) (cons #\x0C
+                ((#\f) (loop (generator) (cons #\x0C
                                                     (append chars-unescaped
                                                             out))))
-                ((#\n) (loop (peek-char port) (cons #\newline
+                ((#\n) (loop (generator) (cons #\newline
                                                     (append chars-unescaped
                                                             out))))
-                ((#\r) (loop (peek-char port) (cons #\x0D
+                ((#\r) (loop (generator) (cons #\x0D
                                                     (append chars-unescaped
                                                             out))))
-                ((#\t) (loop (peek-char port) (cons #\tab
+                ((#\t) (loop (generator) (cons #\tab
                                                     (append chars-unescaped
                                                             out))))
-                ((#\u) (let loop-unicode ((code1 (read-unicode-escape port))
+                ((#\u) (let loop-unicode ((code1 (read-unicode-escape generator))
                                           (chars chars-unescaped))
-                         (if (and (<= #xd800 code1 #xdbff)
-                                  (char=? (read-char port) #\\))
-                             (let ((char (read-char port)))
-                               (if (char=? char #\u)
-                                   (let ((code2 (read-unicode-escape port)))
+                         (let ((next-char (generator)))
+                           (if (and (<= #xd800 code1 #xdbff)
+                                    (char=? next-char #\\))
+                               (if (char=? (generator) #\u)
+                                   (let ((code2 (read-unicode-escape generator)))
                                      (if (<= #xdc00 code2 #xdfff)
                                          (let ((integer
                                                 (+ #x10000 (bitwise-ior
                                                             (ash (- code1 #xd800) 10)
                                                             (- code2 #xdc00)))))
                                            ;; full escape of unicode is parsed...
-                                           (loop (peek-char port)
+                                           (loop (generator)
                                                  (cons (integer->char integer)
                                                        (append chars
                                                                out))))
                                          ;; This is another unicode char
-                                         (loop-unicode (read-unicode-escape port)
+                                         (loop-unicode (read-unicode-escape generator)
                                                        (cons (integer->char code1) chars))))
                                    ;; The escaped unicode char is
                                    ;; parsed, need to parse another
                                    ;; escape that is not a unicode
                                    ;; escape sequence
                                    (loop-unescape char (cons (integer->char code1)
-                                                             chars))))
+                                                             chars)))
                              ;; This is not a big-ish unicode char and
                              ;; the next thing is some other char.
-                             (loop (peek-char port)
-                                   (cons (integer->char code1) (append chars out))))))
+                             (loop next-char
+                                   (cons (integer->char code1) (append chars out)))))))
                 (else (raise (make-json-error "Unexpected escaped sequence."))))))
           (cond
            ((char=? char #\")
-            (read-char port) ; "
-            (callback (list->string (reverse out))))
+            (list->string (reverse out)))
            (else
-            (read-char port) ;; char
-            (loop (peek-char port) (cons char out)))))))
+            (loop (generator) (cons char out)))))))
 
   (define (valid-number? string)
+    ;; TODO: move to a helper library
     ;; based on https://stackoverflow.com/a/13340826/140837
     (regexp-matches '(seq
                       (? #\-)
@@ -161,322 +176,271 @@
                               (+ numeric))))
                     string))
 
-  (define (maybe-read-number callback port)
-    ;; TODO: implement real json number parser, do not rely on scheme
-    ;; string->number.
-
+  (define (maybe-read-number generator)
     ;; accumulate chars until a control char or whitespace is reached,
-    ;; then try to intrepret it as number using string->number
-
-    ;; escape early in case of bad input
-    (when (char=? (peek-char port) #\+)
-      (raise (make-json-error "Unexpected #\\+ character.")))
-
-    (let loop ((char (peek-char port))
+    ;; validate that it is JSON number, then intrepret it as Scheme
+    ;; number using string->number
+    (let loop ((char (generator))
                (out '()))
       (if (or (eof-object? char)
               (json-whitespace? char)
               (char=? char #\,)
               (char=? char #\])
               (char=? char #\}))
-          (callback
-           (or (guard (ex (else (raise (make-json-error "Invalid number."))))
-                 (let ((string (list->string (reverse out))))
-                   (and (valid-number? string)
-                        (string->number string))))
-               ;; XXX: apparantly string->number can return #f
-               ;; instead of raising.
-               (raise (make-json-error "Invalid number."))))
-          (begin (read-char port)
-                 (loop (peek-char port) (cons char out))))))
-
-
-  (define (%read-error? x)
-    (and (error-object? x) (memq (exception-kind x) '(user read read-incomplete)) #t))
-
-  (assume (procedure? callback))
-  (assume (and (textual-port? port) (input-port? port)))
+          (let ((string (list->string (reverse out))))
+            (if (valid-number? string)
+                (let ((number (string->number string)))
+                  (if number
+                      (values number char)
+                      (raise (make-json-error "Invalid number."))))
+                (raise (make-json-error "Invalid number."))))
+          (loop (generator) (cons char out)))))
 
   ;; gist
-  (guard (ex ((%read-error? ex) (raise (make-json-error "Read error!"))))
+  (assume (procedure? generator))
 
-    (when (eof-object? (peek-char port))
-      (raise (make-json-error "Empty JSON text.")))
+  (let ((char (generator)))
+    (if (eof-object? char)
+        eof-object  ;; return an empty generator
+        (begin
 
-    ;; ignore UTF-8 BOM if any
-    (let ((char (peek-char port)))
-      (when (char=? char #\xFEFF)
-        (read-char port)))
+          (unless (char=? char #\xFEFF)
+            ;; if it is not a UTF-8 BOM, put back the char in front of
+            ;; the generator
+            (set! generator (gcons char generator)))
 
-    (maybe-ignore-whitespace port)
-    (let loop ((char (peek-char port)))
-      (if (eof-object? char)
-          (callback 'eof)
-          (begin
-            (case char
-              ((#\n) (read-null callback port))
-              ((#\t) (read-true callback port))
-              ((#\f) (read-false callback port))
-              ((#\:) (read-char port) (callback 'colon))
-              ((#\,) (read-char port) (callback 'comma))
-              ((#\[) (read-char port) (callback 'array-open))
-              ((#\]) (read-char port) (callback 'array-close))
-              ((#\{) (read-char port) (callback 'object-open))
-              ((#\}) (read-char port) (callback 'object-close))
-              ((#\") (read-json-string callback port))
-              (else (maybe-read-number callback port)))
-            (maybe-ignore-whitespace port)
-            (loop (peek-char port)))))))
+          (lambda ()
 
-(define (%json-stream-read proc port)
+            (define char (maybe-ignore-whitespace generator))
 
-  (define (read-array-continue callback obj k)
-    (cond
-     ((or (json-null? obj)
-          (boolean? obj)
-          (string? obj)
-          (number? obj))
-      (callback 'json-value obj)
-      (lambda (obj)
-        (read-array-maybe-continue callback obj k)))
-     ((eq? obj 'array-open)
-      (lambda (obj)
-        (read-array-start callback
-                           obj
-                           ;; continue!
-                           (lambda (obj) (read-array-maybe-continue callback obj k)))))
-     ((eq? obj 'object-open)
-      (lambda (obj)
-        (read-object-start callback
-                            obj
-                            ;; continue!
-                            (lambda (obj) (read-array-maybe-continue callback obj k)))))
-     (else (raise (make-json-error "Invalid array.")))))
+            (if (eof-object? char)
+                char ;; return that eof-object
+                (case char
+                  ((#\n) (expect-null generator) 'null)
+                  ((#\t) (expect-true generator) #t)
+                  ((#\f) (expect-false generator) #f)
+                  ((#\:) 'colon)
+                  ((#\,) 'comma)
+                  ((#\[) 'array-start)
+                  ((#\]) 'array-end)
+                  ((#\{) 'object-start)
+                  ((#\}) 'object-end)
+                  ((#\") (read-json-string generator))
+                  (else
+                   (call-with-values (lambda () (maybe-read-number (gcons char generator)))
+                     (lambda (number next)
+                       (set! generator (gcons next generator))
+                       number))))))))))
 
-  (define (read-array-maybe-continue callback obj k)
-    (case obj
-      ((comma)
-       (lambda (obj) (read-array-continue callback obj k)))
-      ((array-close)
-       (callback 'json-structure 'array-close)
-       k)
-      (else (raise (make-json-error "Invalid array continuation.")))))
+(define (%json-generator-read tokens)
 
-  (define (read-array-start callback obj k)
-    (callback 'json-structure 'array-open)
-    (cond
-     ((or (json-null? obj)
-          (boolean? obj)
-          (string? obj)
-          (number? obj))
-      (callback 'json-value obj)
-      (lambda (obj) (read-array-maybe-continue callback obj k)))
-     ((eq? obj 'array-open)
-      (lambda (obj)
-        (read-array-start callback
-                           obj
-                           ;; continue!
-                           (lambda (obj) (read-array-maybe-continue callback obj k)))))
-     ((eq? obj 'object-open)
-      (lambda (obj)
-        (read-object-start callback
-                            obj
-                            ;; continue!
-                            (lambda (obj) (read-array-maybe-continue callback obj k)))))
-     ((eq? obj 'array-close)
-      (callback 'json-structure 'array-close)
-      k)
-     (else (raise (make-json-error "Invalid array!")))))
+  (define (array-maybe-continue tokens k)
+    (lambda ()
+      (let ((token (tokens)))
+        (case token
+          ((comma) (start tokens (array-maybe-continue tokens k)))
+          ((array-end) (values '(json-structure . array-end) k))
+          (else (raise (make-json-error "Invalid array, expected comma or array close.")))))))
 
-  (define (read-object-continue callback obj k)
-    (cond
-     ((string? obj)
-      (let ((key (string->symbol obj)))
-        (callback 'json-value key)
-        (lambda (obj) (read-object-colon callback obj k))))
-     (else (raise (make-json-error "Invalid object continuation.")))))
+  (define (array-start tokens k)
+    (lambda ()
+      (let ((token (tokens)))
+        (if (eq? token 'array-end)
+            (values '(json-structure . array-end) k)
+            (start (gcons token tokens) (array-maybe-continue tokens k))))))
 
-  (define (read-object-maybe-continue callback obj k)
-    (cond
-     ((eq? obj 'object-close) (callback 'json-structure 'object-close) k)
-     ((eq? obj 'comma)
-      (lambda (obj)
-        (read-object-continue callback obj k)))
-     (else (raise (make-json-error "Invalid object.")))))
+  (define (object-maybe-continue tokens k)
+    (lambda ()
+      (let ((token (tokens)))
+        (case token
+          ((object-end) (values '(json-structure . object-end) k))
+          ((comma) (let ((token (tokens)))
+                     (unless (string? token)
+                       (raise (make-json-error "Invalid object, expected an object key")))
+                     (values (cons 'json-value token)
+                             (object-value tokens k))))
+          (else (raise (make-json-error "Invalid object, expected comma or object close.")))))))
 
-  (define (read-object-value callback obj k)
-    (cond
-     ((or (json-null? obj)
-          (boolean? obj)
-          (string? obj)
-          (number? obj))
-      (callback 'json-value obj)
-      (lambda (obj) (read-object-maybe-continue callback obj k)))
-     ((eq? obj 'array-open)
-      (lambda (obj)
-        (read-array-start callback
-                           obj
-                           ;; continue!
-                           (lambda (obj)
-                             (read-object-maybe-continue callback obj k)))))
-     ((eq? obj 'object-open)
-      (lambda (obj)
-        (read-object-start callback
-                            obj
-                            ;; continue!
-                            (lambda (obj)
-                              (read-object-maybe-continue callback obj k)))))
-     (else (raise (make-json-error "Invalid object value.")))))
+  (define (object-value tokens k)
+    (lambda ()
+      (let ((token (tokens)))
+        (if (eq? token 'colon)
+            (start tokens (object-maybe-continue tokens k))
+            (raise (make-json-error "Invalid object, expected colon."))))))
 
-  (define (read-object-colon callback obj k)
-    (if (eq? obj 'colon)
-        (lambda (obj) (read-object-value callback obj k))
-        (raise (make-json-error "Invalid object, expected colon."))))
+  (define (object-start tokens k)
+    (lambda ()
+      (let ((token (tokens)))
+        (cond
+         ((eq? token 'object-end) (values '(json-structure . object-end) k))
+         ((string? token)
+          (values (cons 'json-value token)
+                  (object-value tokens k)))
+         (else (raise (make-json-error "Invalid object, expected object key or object close.")))))))
 
-  (define (read-object-start callback obj k)
-    (callback 'json-structure 'object-open)
-    (cond
-     ((eq? obj 'object-close) (callback 'json-structure 'object-close) k)
-     ((string? obj)
-      (callback 'json-value (string->symbol obj))
-      (lambda (obj) (read-object-colon callback obj k)))
-     (else (raise (make-json-error "Invalid object.")))))
+  (define (start tokens k)
+    (let ((token (tokens)))
+      (cond
+       ((or (json-null? token)
+            (number? token)
+            (string? token)
+            (boolean? token))
+        (values (cons 'json-value token) k))
+     ((eq? token 'array-start)
+      (values '(json-structure . array-start) (array-start tokens k)))
+     ((eq? token 'object-start)
+      (values '(json-structure . object-start) (object-start tokens k)))
+     (else (raise (make-json-error "Is it JSON text?!"))))))
 
-  (define (start callback obj)
-    (cond
-     ((or (json-null? obj)
-          (number? obj)
-          (string? obj)
-          (boolean? obj))
-      (callback 'json-value obj)
-      (lambda (obj) (raise (make-json-error "Expected end of JSON text"))))
-     ((eq? obj 'array-open)
-      (lambda (obj)
-        (read-array-start callback
-                          obj
-                          (lambda _
-                            (raise (make-json-error "Expected end of JSON text"))))))
-      ((eq? obj 'object-open)
-       (lambda (obj)
-         (read-object-start callback
-                            obj
-                            (lambda _ (raise (make-json-error "Expected end of JSON text"))))))
-      (else (raise (make-json-error "Is is JSON text?!")))))
+  (define (end-of-json-sequence)
+    ;; json-generator-read returns a generator that reads one
+    ;; top-level json. If there is more than one top-level json value
+    ;; in the generator separated with space as it is the case of
+    ;; json-lines, you need to call json-generator-read with the same
+    ;; port or generator.
+    (values (eof-object) #f))
 
-  (define (make-machine callback)
-    (let ((k (lambda (obj) (start callback obj))))
-      (lambda (obj)
-        ;(pk 'parse obj)
-        (unless (eq? obj 'eof)
-          (set! k (k obj))))))
+  (define (make-trampoline-generator tokens)
+    (let ((continuation (lambda () (start tokens end-of-json-sequence))))
+      (lambda ()
+        (when continuation
+          (call-with-values continuation
+            (lambda (event new-continuation)
+              (set! continuation new-continuation)
+              (pk 'event event)))))))
 
   ;; gist
-  (assume (and (textual-port? port) (input-port? port)))
-  (assume (procedure? proc))
-  (json-tokenize (make-machine proc) port))
 
-(define json-stream-read
+  (assume (procedure? tokens))
+
+  (make-trampoline-generator tokens))
+
+(define json-generator-read-error
+  "Argument does not look like a generator and is not a textual input port.")
+
+(define json-generator-read
   (case-lambda
-    ((proc) (json-stream-read proc (current-input-port)))
-    ((proc port) (%json-stream-read proc port))))
+    (() (json-generator-read (current-input-port)))
+    ((port-or-generator)
+     (cond
+      ((procedure? port-or-generator)
+       (%json-generator-read (json-tokens port-or-generator)))
+      ((and (textual-port? port-or-generator) (input-port? port-or-generator))
+       (%json-generator-read (json-tokens (port->generator port-or-generator))))
+      (else (error 'json json-generator-read-error port-or-generator))))))
 
-(define (%json-read port)
+;; XXX: procedure foldts is not used as-is. It was copied here for
+;; documentation purpose (public domain, by Oleg Kiselyov).
+(define (foldts fdown fup fhere seed tree)
+  ;; - fhere is applied to the leafs of the tree
+  ;;
+  ;; - fdown is invoked when a non-leaf node is entered before any of
+  ;; the node's children are visited. fdown action has to generate a
+  ;; seed to be passed to the first visited child of the node.
+  ;;
+  ;; - fup is invoked after all the children of a node have been
+  ;; seen. The first argument is the local state at the moment the
+  ;; traversal process enters the branch rooted at the current node. The
+  ;; second argument is the result of visiting all child branches.  The
+  ;; action of fup isto produce a seed that is taken to be the state of
+  ;; the traversal after the process leave the currents the current
+  ;; branch.
+  (cond
+   ((null? tree) seed)
+   ((not (pair? tree))      ; An atom
+    (fhere seed tree))
+   (else
+    (let loop ((kid-seed (fdown seed tree))
+               (kids (cdr tree)))
+      (if (null? kids)
+      (fup seed kid-seed tree)
+      (loop (foldts fdown fup fhere kid-seed (car kids))
+        (cdr kids)))))))
 
-  (define (read-array out type obj return)
-    (case type
-      ((json-structure)
-       (case obj
-         ((array-close) (return (list->vector (reverse out))))
-         ((array-open)
-          (lambda (type obj)
-            (read-array '()
-                         type
-                         obj
-                         (lambda (other)
-                           (lambda (type obj)
-                             (read-array (cons other out) type obj return))))))
-         ((object-open)
-          (lambda (type obj)
-            (read-object-maybe-key '()
-                                    type
-                                    obj
-                                    (lambda (other)
-                                      (lambda (type obj)
-                                        (read-array (cons other out) type obj return))))))
-         (else (raise (make-json-error "Invalid array.")))))
-      ((json-value)
-       (let ((value obj))
-         (lambda (type obj) (read-array (cons value out) type obj return))))
-      (else (raise (make-json-error "Invalid array.")))))
+(define (json-fold array-start array-end object-start object-end fhere seed events)
 
-  (define (read-object-value key out type obj return)
-    (case type
-      ((json-structure)
-       (case obj
-         ((array-open)
-          (lambda (type obj)
-            (read-array '()
-                         type
-                         obj
-                         (lambda (value)
-                           (lambda (type obj)
-                             (read-object-maybe-key (cons (cons key value) out)
-                                                     type
-                                                     obj
-                                                     return))))))
-         (else (raise (make-json-error "Invalid object value.")))))
-      ((json-value)
-       (let ((value obj))
-         (lambda (type obj) (read-object-maybe-key (cons (cons key value) out)
-                                                    type
-                                                    obj
-                                                    return))))
-      (else (raise (make-json-error "Invalid object value")))))
+  ;; json-fold is inspired from the above foldts definition, it is
+  ;; built in continuation-passing-style.
 
-  (define (read-object-maybe-key out type obj return)
-    (case type
-      ((json-structure)
-       (case obj
-         ((object-close) (return (reverse out)))
-         (else (raise (make-json-error "Invalid object.")))))
-      ((json-value)
-       (let ((key obj))
-         (lambda (type obj) (read-object-value key out type obj return))))
-      (else (raise (make-json-error "Invalid object.")))))
+  (define (ruse seed k)
+    (lambda ()
+      (let loop ((seed seed))
+        (let ((event (events)))
+          (pk 'ruse-event event)
+          (if (eof-object? event)
+              (begin (k seed) #f)
+              (case (car event)
+                ((json-value) (loop (fhere (cdr event) seed)))
+                ((json-structure)
+                 (case (cdr event)
+                   ;; termination cases
+                   ((array-end) (k seed) #f)
+                   ((object-end) (k seed) #f)
+                   ;; recursion
+                   ((array-start) (ruse (array-start seed)
+                                        (lambda (out) (loop (array-end out seed)))))
+                   ((object-start) (ruse (object-start seed)
+                                         (lambda (out) (loop (object-end out seed)))))
+                   (else (error 'json "Oops0!"))))))))))
 
-  (define (start type obj return)
-    (case type
-      ((json-value) (return obj))
-      ((json-structure)
-       (case obj
-         ((object-open)
-          (lambda (type obj)
-            (read-object-maybe-key '() type obj return)))
-         ((array-open)
-          (lambda (type obj)
-            (read-array '() type obj return)))
-         (else (raise (make-json-error "Is this JSON text?!")))))
-      (else (raise (make-json-error "Is this JSON text?!")))))
+  (define (make-trampoline-fold k)
+    (let ((thunk (ruse seed k)))
+      (let loop ((thunk thunk))
+        (when thunk
+          (loop (thunk))))))
 
-  (define (make-machine return)
-    (let ((k (lambda (type obj) (start type obj return))))
-      (lambda (type obj)
-        ;(pk 'machine type obj)
-        (when k
-          (set! k (k type obj))))))
+  (define %unset '(unset))
 
-  (assume (and (textual-port? port) (input-port? port)))
-
-  (let ((out 'unset))
-    (json-stream-read (make-machine (lambda (other) (set! out other) #f)) port)
-    (if (eq? out 'unset)
-        (raise (make-json-error "json-read oops!"))
+  (let ((out %unset))
+    (make-trampoline-fold (lambda (out*) (set! out out*)))
+    (if (eq? out %unset)
+        (error 'json "Oops1!")
         out)))
+
+(define (%json-read port-or-generator)
+
+  (define %root '(root))
+
+  (define (array-start seed)
+    '())
+
+  (define (array-end items seed)
+    (let ((out (list->vector (reverse items))))
+      (if (eq? seed %root)
+          out
+          (cons out seed))))
+
+  (define (object-start seed)
+    '())
+
+  (define (plist->alist plist)
+    ;; PLIST is a list of even items, otherwise json-read-generator
+    ;; would have raised a json-error.  json-generator-read is
+    ;; validating.
+    (let loop ((plist plist)
+               (out '()))
+      (if (null? plist)
+          out ;; TODO: maybe use reverse
+          (loop (cddr plist) (cons (cons (string->symbol (cadr plist)) (car plist)) out)))))
+
+  (define (object-end plist seed)
+    (let ((alist (plist->alist plist)))
+      (if (eq? seed %root)
+          alist
+          (cons alist seed))))
+
+  (define (fhere obj seed)
+    (if (eq? seed %root)
+        obj
+        (cons obj seed)))
+
+  (let ((events (json-generator-read port-or-generator)))
+    (json-fold array-start array-end object-start object-end fhere %root events)))
 
 (define json-read
   (case-lambda
     (() (json-read (current-input-port)))
-    ((port) (%json-read port))))
+    ((port-or-generator) (%json-read port-or-generator))))
 
 (define (%json-write obj port)
 
@@ -498,7 +462,7 @@
       (void))
      ((vector? obj)
       (vector-for-each (lambda (obj) (raise-unless-valid? obj)) obj))
-     ;; XXX: pair? instead of list? because it is faster.
+     ;; XXX: use pair? then recursively check the tail.
      ((pair? obj)
       (for-each (lambda (obj)
                   (unless (pair? obj)

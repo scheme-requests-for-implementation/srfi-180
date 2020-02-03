@@ -2,7 +2,9 @@
 
   (export json-null?
           json-error?
-          json-stream-read
+          json-error-reason
+          json-fold
+          json-generator-read
           json-read
           json-write)
 
@@ -11,6 +13,7 @@
           (scheme case-lambda)
           (scheme char)
           (scheme text)
+          (scheme write)
           (check)
           (srfi 145)
           (srfi 151)
