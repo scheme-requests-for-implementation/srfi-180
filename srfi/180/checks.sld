@@ -1,4 +1,4 @@
-(define-library (json-checks)
+(define-library (srfi 180 checks)
 
   (export i_number_double_huge_neg_exp.json
           i_number_huge_exp.json
@@ -335,7 +335,7 @@
 
   (import (scheme base))
   (import (scheme file))
-  (import (json))
+  (import (srfi 180))
   (import (check))
 
   (begin

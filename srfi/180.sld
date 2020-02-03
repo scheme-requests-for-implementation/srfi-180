@@ -1,4 +1,4 @@
-(define-library (json)
+(define-library (srfi 180)
 
   (export json-null?
           json-error?
@@ -20,4 +20,4 @@
           (chibi ast)
           (chibi regexp))
 
-  (include "json.scm"))
+  (include "180/body.scm"))
