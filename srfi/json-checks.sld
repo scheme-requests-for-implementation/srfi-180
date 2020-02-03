@@ -321,6 +321,8 @@
           y_structure_trailing_newline.json
           y_structure_true_in_array.json
           y_structure_whitespace_array.json
+          ;; other tests
+          y_object_nested.json
           ;; scheme specific
           n_+inf.0
           n_-inf.0
@@ -1394,6 +1396,11 @@
 
     (define y_structure_whitespace_array.json
       (check #() (parse "./files/y_structure_whitespace_array.json")))
+
+    ;; Other tests
+
+    (define y_object_nested.json
+      (check '((outer (inner . 1))) (parse "./files/y_object_nested.json")))
 
     ;; Scheme specific tests
 
