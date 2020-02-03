@@ -28,7 +28,7 @@
 
 (define (port->generator port)
   (define (%read-error? x)
-    ;; XXX: non portable
+    ;; TODO: move to a helper library
     (and (error-object? x) (memq (exception-kind x) '(user read read-incomplete)) #t))
 
   (define offset 0)
@@ -39,7 +39,7 @@
 
 (define (gcons head generator)
   ;; returns a generator that will yield, HEAD the first time, and
-  ;; after than, it will yields items from GENERATOR.
+  ;; after than, it will yield items from GENERATOR.
   (let ((head? #t))
     (lambda ()
       (if head?
@@ -164,6 +164,7 @@
             (loop (generator) (cons char out)))))))
 
   (define (valid-number? string)
+    ;; TODO: move to a helper library
     ;; based on https://stackoverflow.com/a/13340826/140837
     (regexp-matches '(seq
                       (? #\-)
@@ -353,38 +354,6 @@
       (loop (foldts fdown fup fhere kid-seed (car kids))
         (cdr kids)))))))
 
-;; ;; This is direct style definition of json-fold.  It is not tail
-;; ;; recursive, hence consume the stack.
-;;
-;; (define (json-fold array-start array-end object-start object-end fhere seed events)
-;;   (let loop ((seed seed))
-;;     (let ((event (events)))
-;;       (if (eof-object? event)
-;;           seed
-;;           (case (car (event))
-;;             ((json-value) (loop (fhere (cdr event) seed)))
-;;             ((json-structure)
-;;              (case (cdr event)
-;;                ((array-end) seed)
-;;                ((array-start) (array-end (json-fold array-start
-;;                                                     array-end
-;;                                                     object-start
-;;                                                     object-end
-;;                                                     fhere
-;;                                                     (array-start seed)
-;;                                                     events)
-;;                                          seed))
-;;                ((object-end) seed)
-;;                ((object-start) (object-end (json-fold array-start
-;;                                                       array-end
-;;                                                       object-start
-;;                                                       object-end
-;;                                                       fhere
-;;                                                       (object-start seed)
-;;                                                       events)
-;;                                            seed))
-;;                (else (error 'json "Oops!")))))))))
-
 (define (json-fold array-start array-end object-start object-end fhere seed events)
 
   (define (ruse seed k)
@@ -487,7 +456,7 @@
       (void))
      ((vector? obj)
       (vector-for-each (lambda (obj) (raise-unless-valid? obj)) obj))
-     ;; XXX: pair? instead of list? because it is faster.
+     ;; XXX: use pair? then recursively check the tail.
      ((pair? obj)
       (for-each (lambda (obj)
                   (unless (pair? obj)

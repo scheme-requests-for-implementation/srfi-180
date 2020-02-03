@@ -352,7 +352,7 @@
       (call-with-input-string
        (call-with-output-string
         (lambda (port)
-          (json-write (pk 'scheme (call-with-input-file filepath json-read)) port)))
+          (json-write (call-with-input-file filepath json-read) port)))
        (lambda (port)
          (json-read port))))
 
