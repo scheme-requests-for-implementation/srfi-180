@@ -253,7 +253,7 @@
           ((object-end) (values '(json-structure . object-end) k))
           ((comma) (let ((token (tokens)))
                      (unless (string? token)
-                       (raise "Invalid object, expected an object key"))
+                       (raise (make-json-error "Invalid object, expected an object key")))
                      (values (cons 'json-value token)
                              (object-value tokens k))))
           (else (raise (make-json-error "Invalid object, expected comma or object close.")))))))
