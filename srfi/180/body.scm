@@ -1,6 +1,3 @@
-(define (pk . args)
-  (car (reverse args)))
-
 (define (json-null? obj)
   (eq? obj 'null))
 
@@ -27,15 +24,9 @@
     (raise (make-json-error "Unexpected character."))))
 
 (define (port->generator port)
-  (define (%read-error? x)
-    ;; TODO: move to a helper library
-    (and (error-object? x) (memq (exception-kind x) '(user read read-incomplete)) #t))
-
-  (define offset 0)
-
   (lambda ()
     (guard (ex ((%read-error? ex) (raise (make-json-error "Read error!"))))
-      (pk 'read-char (read-char port)))))
+      (read-char port))))
 
 (define (gcons head generator)
   ;; returns a generator that will yield, HEAD the first time, and
@@ -162,19 +153,6 @@
             (list->string (reverse out)))
            (else
             (loop (generator) (cons char out)))))))
-
-  (define (valid-number? string)
-    ;; TODO: move to a helper library
-    ;; based on https://stackoverflow.com/a/13340826/140837
-    (regexp-matches '(seq
-                      (? #\-)
-                      (or #\0 (seq (- numeric #\0)
-                                   (* numeric)))
-                      (? (seq #\. (+ numeric)))
-                      (? (seq (or #\e #\E)
-                              (? (or #\- #\+))
-                              (+ numeric))))
-                    string))
 
   (define (maybe-read-number generator)
     ;; accumulate chars until a control char or whitespace is reached,
@@ -307,7 +285,7 @@
           (call-with-values continuation
             (lambda (event new-continuation)
               (set! continuation new-continuation)
-              (pk 'event event)))))))
+              event))))))
 
   ;; gist
 
@@ -366,7 +344,6 @@
     (lambda ()
       (let loop ((seed seed))
         (let ((event (events)))
-          (pk 'ruse-event event)
           (if (eof-object? event)
               (begin (k seed) #f)
               (case (car event)
@@ -420,7 +397,7 @@
     (let loop ((plist plist)
                (out '()))
       (if (null? plist)
-          out ;; TODO: maybe use reverse
+          out
           (loop (cddr plist) (cons (cons (string->symbol (cadr plist)) (car plist)) out)))))
 
   (define (object-end plist seed)
