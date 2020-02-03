@@ -17,7 +17,6 @@
           (check)
           (srfi 145)
           (srfi 151)
-          (chibi ast)
-          (chibi regexp))
+          (srfi 180 helpers))
 
   (include "180/body.scm"))
