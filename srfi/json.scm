@@ -189,7 +189,10 @@
               (char=? char #\}))
           (let ((string (list->string (reverse out))))
             (if (valid-number? string)
-                (values (string->number string) char)
+                (let ((number (string->number string)))
+                  (if number
+                      (values number char)
+                      (raise (make-json-error "Invalid number."))))
                 (raise (make-json-error "Invalid number."))))
           (loop (generator) (cons char out)))))
 
