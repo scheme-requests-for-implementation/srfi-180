@@ -2,6 +2,7 @@
 
   (export json-null?
           json-error?
+          json-error-reason
           json-fold
           json-generator-read
           json-read
