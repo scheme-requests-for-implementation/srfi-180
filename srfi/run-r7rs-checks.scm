@@ -14,7 +14,7 @@
 
 (define (filename->library-name filename)
   ;; TODO: try to guess ;)
-  '(json-checks))
+  '(srfi 180 checks))
 
 (define (filename->library-exports filename)
   (define library (call-with-input-file filename read))
