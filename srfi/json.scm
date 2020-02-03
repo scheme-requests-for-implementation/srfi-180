@@ -329,8 +329,8 @@
        (%json-generator-read (json-tokens (port->generator port-or-generator))))
       (else (error 'json json-generator-read-error port-or-generator))))))
 
-;; XXX: foldts is not used. It was copied here for documentation
-;; purpose (public domain, by Oleg Kiselyov).
+;; XXX: procedure foldts is not used as-is. It was copied here for
+;; documentation purpose (public domain, by Oleg Kiselyov).
 (define (foldts fdown fup fhere seed tree)
   ;; - fhere is applied to the leafs of the tree
   ;;
@@ -358,6 +358,9 @@
         (cdr kids)))))))
 
 (define (json-fold array-start array-end object-start object-end fhere seed events)
+
+  ;; json-fold is inspired from the above foldts definition, it is
+  ;; built in continuation-passing-style.
 
   (define (ruse seed k)
     (lambda ()
