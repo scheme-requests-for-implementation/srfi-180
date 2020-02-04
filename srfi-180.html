@@ -107,7 +107,7 @@
             <li><p>If <code>event-type</code> is <code>'json-structure</code>, then <code>obj</code> can be:</p>
                 <ul>
                     <li><p><code>'array-start</code> symbol denoting that an array should be constructed.</p></li>
-                    <li><p><code>'array-end</code> symbol denoting that the construction of thec array for which the last <code>'array-start</code> that was generated and not closed is finished.</p></li>
+                    <li><p><code>'array-end</code> symbol denoting that the construction of the array for which the last <code>'array-start</code> that was generated and not closed is finished.</p></li>
                     <li><p><code>'object-start</code> symbol denoting that an object should be constructed.  The object's key-value pairs are emitted in sequence like those in a property list (plist).  That is the generation of a key is always followed by the generation of a value.  Otherwise, the JSON would be invalid and <code>json-generator-read</code> would raise error.</li>
                     <li><p><code>'object-end</code> symbol denoting that the construction of the object for which the last <code>object-start</code> was generated and not closed is finished.</p></li>
                 </ul></li>
@@ -123,7 +123,7 @@
         <p>Otherwise, if <code>TOKENS</code> describes valid JSON text, the generator returned by <code>json-generator-read</code> must yield an end-of-file object in two situations:</p>
         <ul>
             <li>The first time <code>TOKENS</code> is called, it returns an object that is a boolean, a number, a string or the symbol <code>'null</code>.</li>
-            <li>The first time <code>TOKENS</code> is called, it returns a symbol that is not the symbol <code>'null</code>.  <code>json-generator-read</code> expects the symbols described in <code>json-tokens</code>.  When the underlying JSON text is valid, it should be the symbol starting a structure: <code>'object-start</code> or <code>'array-start</code>.  The end-of-file object is generated when when the structure is finished.</li>
+            <li>The first time <code>TOKENS</code> is called, it returns a symbol that is not the symbol <code>'null</code>.  <code>json-generator-read</code> expects the symbols described in procedure <code>json-tokens</code>.  When the underlying JSON text is valid, it should be the symbol starting a structure: <code>'object-start</code> or <code>'array-start</code>.  The end-of-file object is generated when when that structure is finished.</li>
         </ul>
 
         <p>Otherwise said, the generator returned by <code>json-generator-read</code> will parse at most one JSON value or one top-level structure.  If <code>TOKENS</code> is not finished, like it is the cases of <a href="http://jsonlines.org/">JSON lines</a>, the user must call again <code>json-generator-read</code> with the same <code>TOKENS</code>.</p>
