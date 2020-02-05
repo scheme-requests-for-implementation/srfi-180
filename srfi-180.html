@@ -94,7 +94,7 @@
 
         <h3 id="json-nesting-depth-limit-parameter"><code>json-nesting-depth-limit</code> parameter</h3>
         <p>Parameter holding a number that represent the maximum nesting depth of JSON text that can be read by <code>json-generator-read</code>, <code>json-fold</code>, and <code>json-read</code>.  If the value returned by this parameter is reached, the implementation must raise an error that satisfies <code>json-error?</code>.  This parameter does not apply to the procedure <code>json-tokens</code>.</p>
-        <p>The default value of <code>json-nesting-depth-limit</code> is unspecified.</p>
+        <p>The default value of <code>json-nesting-depth-limit</code> is <code>+inf.0</code>.</p>
 
         <h3 id="json-generator-read-tokens-generator"><code>(json-generator-read [tokens]) → generator</code></h3>
         <p>Streaming event-based JSON reader.  <code>TOKENS</code> is a generator of tokens such as returned by the procedure <code>json-tokens</code>.  <code>json-generator-read</code> returns a generator of pairs.</p>
