@@ -123,7 +123,7 @@
         <p>Otherwise, if <code>TOKENS</code> describes valid JSON text, the generator returned by <code>json-generator-read</code> must yield an end-of-file object in two situations:</p>
         <ul>
             <li>The first time <code>TOKENS</code> is called, it returns an object that is a boolean, a number, a string or the symbol <code>'null</code>.</li>
-            <li>The first time <code>TOKENS</code> is called, it returns a symbol that is not the symbol <code>'null</code>.  <code>json-generator-read</code> expects the symbols described in procedure <code>json-tokens</code>.  When the underlying JSON text is valid, it should be the symbol starting a structure: <code>'object-start</code> or <code>'array-start</code>.  The end-of-file object is generated when when that structure is finished.</li>
+            <li>The first time <code>TOKENS</code> is called, it returns a symbol that is not the symbol <code>'null</code>.  When the underlying JSON text is valid, it should be the symbol starting a structure: <code>'object-start</code> or <code>'array-start</code>, then end-of-file object is generated when that structure is finished.</li>
         </ul>
 
         <p>In other words, the generator returned by <code>json-generator-read</code> will parse at most one JSON value or one top-level structure.  If <code>TOKENS</code> is not finished, as in the case of <a href="http://jsonlines.org/">JSON lines</a>, the user must call <code>json-generator-read</code> again with the same <code>TOKENS</code>.</p>
