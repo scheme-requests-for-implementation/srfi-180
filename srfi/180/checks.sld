@@ -1,4 +1,4 @@
-(define-library (json-checks)
+(define-library (srfi 180 checks)
 
   (export i_number_double_huge_neg_exp.json
           i_number_huge_exp.json
@@ -320,11 +320,22 @@
           y_structure_string_empty.json
           y_structure_trailing_newline.json
           y_structure_true_in_array.json
-          y_structure_whitespace_array.json)
+          y_structure_whitespace_array.json
+          ;; other tests
+          y_object_nested.json
+          ;; scheme specific
+          n_+inf.0
+          n_-inf.0
+          n_complex
+          n_-nan.0
+          n_+nan.0
+          n_exact_not_integer
+
+          )
 
   (import (scheme base))
   (import (scheme file))
-  (import (json))
+  (import (srfi 180))
   (import (check))
 
   (begin
@@ -346,6 +357,12 @@
           (json-write (call-with-input-file filepath json-read) port)))
        (lambda (port)
          (json-read port))))
+
+    (define (json-string->obj string)
+      (call-with-input-string string json-read))
+
+    (define (obj->json-string obj)
+      (call-with-output-string (lambda (port) (json-write obj))))
 
     (define parse json->obj->json->obj)
 
@@ -483,7 +500,9 @@
       (check-raise json-error? (parse "./files/n_array_colon_instead_of_comma.json")))
 
     (define n_array_comma_after_close.json
-      (check-raise json-error? (parse "./files/n_array_comma_after_close.json")))
+      ;; The parser read a single JSON toplevel value, and ignore the
+      ;; rest.
+      (skip check-raise json-error? (parse "./files/n_array_comma_after_close.json")))
 
     (define n_array_comma_and_number.json
       (check-raise json-error? (parse "./files/n_array_comma_and_number.json")))
@@ -495,7 +514,9 @@
       (check-raise json-error? (parse "./files/n_array_double_extra_comma.json")))
 
     (define n_array_extra_close.json
-      (check-raise json-error? (parse "./files/n_array_extra_close.json")))
+      ;; XXX: The parser reads a single toplevel JSON value, and
+      ;; ignore the rest.
+      (skip check-raise json-error? (parse "./files/n_array_extra_close.json")))
 
     (define n_array_extra_comma.json
       (check-raise json-error? (parse "./files/n_array_extra_comma.json")))
@@ -785,16 +806,22 @@
       (check-raise json-error? (parse "./files/n_object_trailing_comma.json")))
 
     (define n_object_trailing_comment.json
-      (check-raise json-error? (parse "./files/n_object_trailing_comment.json")))
+      ;; XXX: The parser read a single toplevel JSON value, and ignore
+      ;; the rest.
+      (skip check-raise json-error? (parse "./files/n_object_trailing_comment.json")))
 
     (define n_object_trailing_comment_open.json
-      (check-raise json-error? (parse "./files/n_object_trailing_comment_open.json")))
+      ;; XXX: The parser read a single toplevel JSON value, and ignore
+      ;; the rest.
+      (skip check-raise json-error? (parse "./files/n_object_trailing_comment_open.json")))
 
     (define n_object_trailing_comment_slash_open_incomplete.json
-      (check-raise json-error? (parse "./files/n_object_trailing_comment_slash_open_incomplete.json")))
+      ;; XXX: The parser read a single toplevel JSON value, and ignore the rest.
+      (skip check-raise json-error? (parse "./files/n_object_trailing_comment_slash_open_incomplete.json")))
 
     (define n_object_trailing_comment_slash_open.json
-      (check-raise json-error? (parse "./files/n_object_trailing_comment_slash_open.json")))
+      ;; XXX: The parser read a single toplevel JSON value, and ignore the rest.
+      (skip check-raise json-error? (parse "./files/n_object_trailing_comment_slash_open.json")))
 
     (define n_object_two_commas_in_a_row.json
       (check-raise json-error? (parse "./files/n_object_two_commas_in_a_row.json")))
@@ -809,7 +836,9 @@
       (check-raise json-error? (parse "./files/n_object_with_single_string.json")))
 
     (define n_object_with_trailing_garbage.json
-      (check-raise json-error? (parse "./files/n_object_with_trailing_garbage.json")))
+      ;; XXX: The parser read a single toplevel value, and ignore the
+      ;; rest.
+      (skip check-raise json-error? (parse "./files/n_object_with_trailing_garbage.json")))
 
     (define n_single_space.json
       (check-raise json-error? (parse "./files/n_single_space.json")))
@@ -899,10 +928,12 @@
       (check-raise json-error? (parse "./files/n_string_unicode_CapitalU.json")))
 
     (define n_string_with_trailing_garbage.json
-      (check-raise json-error? (parse "./files/n_string_with_trailing_garbage.json")))
+      ;; The parser read a single toplevel value, and ignore the rest.
+      (skip check-raise json-error? (parse "./files/n_string_with_trailing_garbage.json")))
 
     (define n_structure_100000_opening_arrays.json
-      (check-raise json-error? (parse "./files/n_structure_100000_opening_arrays.json")))
+      ;; TODO: unskip when limit is here
+      (skip check-raise json-error? (parse "./files/n_structure_100000_opening_arrays.json")))
 
     (define n_structure_angle_bracket_..json
       (check-raise json-error? (parse "./files/n_structure_angle_bracket_..json")))
@@ -911,10 +942,13 @@
       (check-raise json-error? (parse "./files/n_structure_angle_bracket_null.json")))
 
     (define n_structure_array_trailing_garbage.json
-      (check-raise json-error? (parse "./files/n_structure_array_trailing_garbage.json")))
+      ;; XXX: The parser reads a single JSON toplevel value and ignore
+      ;; the rest.
+      (skip check-raise json-error? (parse "./files/n_structure_array_trailing_garbage.json")))
 
     (define n_structure_array_with_extra_array_close.json
-      (check-raise json-error? (parse "./files/n_structure_array_with_extra_array_close.json")))
+      ;; XXX: The parser consider a single toplevel value.
+      (skip check-raise json-error? (parse "./files/n_structure_array_with_extra_array_close.json")))
 
     (define n_structure_array_with_unclosed_string.json
       (check-raise json-error? (parse "./files/n_structure_array_with_unclosed_string.json")))
@@ -926,13 +960,16 @@
       (check-raise json-error? (parse "./files/n_structure_capitalized_True.json")))
 
     (define n_structure_close_unopened_array.json
-      (check-raise json-error? (parse "./files/n_structure_close_unopened_array.json")))
+      ;; XXX: The parser reads a single toplevel value, and ignore the
+      ;; rest.
+      (skip check-raise json-error? (parse "./files/n_structure_close_unopened_array.json")))
 
     (define n_structure_comma_instead_of_closing_brace.json
       (check-raise json-error? (parse "./files/n_structure_comma_instead_of_closing_brace.json")))
 
     (define n_structure_double_array.json
-      (check-raise json-error? (parse "./files/n_structure_double_array.json")))
+      ;; XXX: The parser considers a single JSON toplevel value
+      (skip check-raise json-error? (parse "./files/n_structure_double_array.json")))
 
     (define n_structure_end_array.json
       (check-raise json-error? (parse "./files/n_structure_end_array.json")))
@@ -953,10 +990,14 @@
       (check-raise json-error? (parse "./files/n_structure_null-byte-outside-string.json")))
 
     (define n_structure_number_with_trailing_garbage.json
-      (check-raise json-error? (parse "./files/n_structure_number_with_trailing_garbage.json")))
+      ;; XXX: The parser read a single toplevel value.
+      (skip check-raise json-error? (parse "./files/n_structure_number_with_trailing_garbage.json")))
 
     (define n_structure_object_followed_by_closing_object.json
-      (check-raise json-error? (parse "./files/n_structure_object_followed_by_closing_object.json")))
+      ;; XXX: The parser reads a single toplevel value, and will not
+      ;; consider the rest of the text, until another json-read is
+      ;; done.
+      (skip check-raise json-error? (parse "./files/n_structure_object_followed_by_closing_object.json")))
 
     (define n_structure_object_unclosed_no_value.json
       (check-raise json-error? (parse "./files/n_structure_object_unclosed_no_value.json")))
@@ -965,7 +1006,9 @@
       (check-raise json-error? (parse "./files/n_structure_object_with_comment.json")))
 
     (define n_structure_object_with_trailing_garbage.json
-      (check-raise json-error? (parse "./files/n_structure_object_with_trailing_garbage.json")))
+      ;; XXX: The parser will read a single top level JSON value and
+      ;; return it.  It will not consider the whole string.
+      (skip check-raise json-error? (parse "./files/n_structure_object_with_trailing_garbage.json")))
 
     (define n_structure_open_array_apostrophe.json
       (check-raise json-error? (parse "./files/n_structure_open_array_apostrophe.json")))
@@ -974,7 +1017,8 @@
       (check-raise json-error? (parse "./files/n_structure_open_array_comma.json")))
 
     (define n_structure_open_array_object.json
-      (check-raise json-error? (parse "./files/n_structure_open_array_object.json")))
+      ;; TODO: unskip once there is a paramter json-max-nesting-level
+      (skip check-raise json-error? (parse "./files/n_structure_open_array_object.json")))
 
     (define n_structure_open_array_open_object.json
       (check-raise json-error? (parse "./files/n_structure_open_array_open_object.json")))
@@ -1013,7 +1057,12 @@
       (check-raise json-error? (parse "./files/n_structure_single_star.json")))
 
     (define n_structure_trailing_sharp.json
-      (check-raise json-error? (parse "./files/n_structure_trailing_#.json")))
+      ;; XXX: the parser will read the first JSON and stop there, if
+      ;; there is more characters after a JSON sequence, it will not
+      ;; be taken in to account. That is, what follows a JSON text
+      ;; does matter, as long as there is proper object / array that
+      ;; open / close and string double quotes and escapes.
+      (skip check-raise json-error? (parse "./files/n_structure_trailing_#.json")))
 
     (define n_structure_U+2060_word_joined.json
       (check-raise json-error? (parse "./files/n_structure_U+2060_word_joined.json")))
@@ -1168,8 +1217,8 @@
       (check '((asd . "sdf") (dfg . "fgh")) (parse "./files/y_object.json")))
 
     (define y_object_long_strings.json
-      (check '((x . #(((id . "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"))))
-               (id . "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"))
+      (check '((abc . #(((def . "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"))))
+               (ijk . "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"))
              (parse "./files/y_object_long_strings.json")))
 
     (define y_object_simple.json
@@ -1347,5 +1396,30 @@
 
     (define y_structure_whitespace_array.json
       (check #() (parse "./files/y_structure_whitespace_array.json")))
+
+    ;; Other tests
+
+    (define y_object_nested.json
+      (check '((outer (inner . 1))) (parse "./files/y_object_nested.json")))
+
+    ;; Scheme specific tests
+
+    (define n_+inf.0
+      (check-raise json-error? (obj->json-string +inf.0)))
+
+    (define n_-inf.0
+      (check-raise json-error? (obj->json-string -inf.0)))
+
+    (define n_complex
+      (check-raise json-error? (obj->json-string 3+14i)))
+
+    (define n_-nan.0
+      (check-raise json-error? (obj->json-string +nan.0)))
+
+    (define n_+nan.0
+      (check-raise json-error? (obj->json-string -nan.0)))
+
+    (define n_exact_not_integer
+      (check-raise json-error? (obj->json-string 314/100)))
 
     ))

@@ -1,163 +1,215 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta http-equiv="Content-Style-Type" content="text/css" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link href="/favicon.png" rel="icon" sizes="192x192" type="image/png" />
-  <meta name="generator" content="pandoc" />
-  <title></title>
-  <link rel="stylesheet" href="/srfi.css" type="text/css" />
-  <style type="text/css">code{white-space: pre;}</style>
-  <style type="text/css">
-div.sourceCode { overflow-x: auto; }
-table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
-  margin: 0; padding: 0; vertical-align: baseline; border: none; }
-table.sourceCode { width: 100%; line-height: 100%; }
-td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
-td.sourceCode { padding-left: 5px; }
-code > span.kw { color: #007020; font-weight: bold; } /* Keyword */
-code > span.dt { color: #902000; } /* DataType */
-code > span.dv { color: #40a070; } /* DecVal */
-code > span.bn { color: #40a070; } /* BaseN */
-code > span.fl { color: #40a070; } /* Float */
-code > span.ch { color: #4070a0; } /* Char */
-code > span.st { color: #4070a0; } /* String */
-code > span.co { color: #60a0b0; font-style: italic; } /* Comment */
-code > span.ot { color: #007020; } /* Other */
-code > span.al { color: #ff0000; font-weight: bold; } /* Alert */
-code > span.fu { color: #06287e; } /* Function */
-code > span.er { color: #ff0000; font-weight: bold; } /* Error */
-code > span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
-code > span.cn { color: #880000; } /* Constant */
-code > span.sc { color: #4070a0; } /* SpecialChar */
-code > span.vs { color: #4070a0; } /* VerbatimString */
-code > span.ss { color: #bb6688; } /* SpecialString */
-code > span.im { } /* Import */
-code > span.va { color: #19177c; } /* Variable */
-code > span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
-code > span.op { color: #666666; } /* Operator */
-code > span.bu { } /* BuiltIn */
-code > span.ex { } /* Extension */
-code > span.pp { color: #bc7a00; } /* Preprocessor */
-code > span.at { color: #7d9029; } /* Attribute */
-code > span.do { color: #ba2121; font-style: italic; } /* Documentation */
-code > span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
-code > span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
-code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
-  </style>
-</head>
-<body>
-<h1 id="title">Title</h1>
-<p>JSON</p>
-<h2 id="author">Author</h2>
-<p>Amirouche Boubekki</p>
-<h2 id="status">Status</h2>
-<p>This SRFI is currently in <em>draft</em> status.  Here is <a href="https://srfi.schemers.org/srfi-process.html">an explanation</a> of each status that a SRFI can hold.  To provide input on this SRFI, please send email to <code><a href="mailto:srfi+minus+180+at+srfi+dotschemers+dot+org">srfi-180@<span class="antispam">nospam</span>srfi.schemers.org</a></code>.  To subscribe to the list, follow <a href="https://srfi.schemers.org/srfi-list-subscribe.html">these instructions</a>.  You can access previous messages via the mailing list <a href="https://srfi-email.schemers.org/srfi-180">archive</a>.</p>
-<ul>
-  <li>Received: 2020/1/17</li>
-  <li>60-day deadline: 2020/3/18</li>
-  <li>Draft #1 published: 2020/1/17</li>
-</ul>
-<h2 id="abstract">Abstract</h2>
-<p>This library describes a JavaScript Object Notation (JSON) parser and printer.  It supports streaming parses of JSON that may be bigger than memory.</p>
-<h2 id="rationale">Rationale</h2>
-<p><a href="https://www.json.org/">JSON</a> is a <i>de facto</i> industry standard for data exchange.</p>
-<p>For best interoperability, the sample implementation is based on <a href="https://tools.ietf.org/html/rfc7159">RFC7159</a>, and the tests are based on <a href="https://github.com/nst/JSONTestSuite/">JSONTestSuite</a>.</p>
-<p>The mapping between JSON types and Scheme objects is not trivial because a given mapping might not be the best for every situation.  That is one of the reasons that this library exposes a stream reader, which allows users to specify the Scheme representation and have efficient code.</p>
-<h2 id="specification">Specification</h2>
-<h3 id="json-error-obj-boolean"><code>(json-error? obj) → boolean</code></h3>
-<p>Returns <code>#t</code> is <code>OBJ</code> is an error object.  This exception can be raised during <code>json-stream-read</code>, <code>json-read</code> or <code>json-write</code>.</p>
-<h3 id="json-error-reason-obj-string"><code>(json-error-reason obj) → string</code></h3>
-<p>Return a string explaining the reason for the error.  This should be human-readable.</p>
-<h3 id="json-null-obj-boolean"><code>(json-null? obj) → boolean</code></h3>
-<p>Return <code>#t</code> if <code>OBJ</code> is the scheme symbol <code>'null</code>, which represents the JSON <code>null</code> in Scheme.  In all other cases, return <code>#f</code>.</p>
-<h3 id="json-stream-read-proc-port-unspecified"><code>(json-stream-read proc [port]) → unspecified</code></h3>
-<p>Streaming event-based JSON reader.  <code>PORT</code> must be a textual input port.  The default value of <code>PORT</code> is the value returned by the procedure <code>current-input-port</code>.  The returned value is unspecified.</p>
-<p><code>json-stream-read</code> should raise an object that satisfies the predicate <code>json-error?</code> in cases where the JSON is invalid.</p>
-<p><code>json-stream-read</code> will call <code>PROC</code> with two arguments.  The first argument is the event <code>type</code>, and the second argument is the event <code>obj</code>.  Since the value that can be taken by <code>obj</code> depends on the value of <code>type</code>, they are presented together in the following paragraph.</p>
-<p>The first arguments is denoted <code>type</code>.  It is a symbol.  It can be the following:</p>
-<ul>
-<li><code>'json-structure</code></li>
-<li><code>'json-value</code></li>
-</ul>
-<p>The <code>obj</code> argument can take the following values depending on <code>type</code>:</p>
-<ul>
-<li><p>If type is <code>'json-structure</code>, then <code>obj</code> can be:</p>
-<ul>
-<li><p><code>'array-open</code> symbol denoting that an array should be constructed.</p></li>
-<li><p><code>'array-close</code> symbol denoting that the construction of the array for which the last <code>'array-open</code> was emitted and not closed is finished.</p></li>
-<li><p><code>'object-open</code> symbol denoting that an object should be constructed.  The object's key-value pairs are emitted in sequence like those in a property list (plist).  The keys will be produced by <code>(proc 'json-structure some-symbol)</code>, that is, the key is always a symbol.  The production of the key is always followed by the production of a value.  Otherwise, the JSON would be invalid and <code>json-stream-read</code> would raise error.  The production of the value can be a <code>'json-value</code> but can also be <code>'json-structure</code> with <code>obj</code> strictly equivalent <code>'array-open</code> or <code>'object-open</code>.  These events will be followed by other events.  Eventually, an associated <code>'object-close</code> event is emitted.</p></li>
-<li><p><code>'object-close</code> symbol denoting that the construction of the object for which the last <code>object-open</code> was emitted and not closed is finished.</p></li>
-</ul></li>
-<li><p>If type is <code>'json-value</code>, then <code>obj</code> is scheme object that can be of the following types:</p>
-<ul>
-<li><p>symbol</p></li>
-<li><p>number</p></li>
-<li><p>string</p></li>
-</ul></li>
-</ul>
-<p><strong>Note:</strong> This document does not prescribe a validating parser.  But in cases where the input JSON is valid, <code>json-parse</code> must emit the correct sequence of events.</p>
-<p><strong>Note:</strong> Given that <code>type</code> is <code>'json-value</code>, there are two occasions where <code>obj</code> can be a symbol: 1) the JSON contains a <code>null</code> value, in that case <code>'null</code> symbol is produced; 2) In a JSON object, keys are produced with the type <code>'json-value</code> and the <code>obj</code> as a symbol.  In particular the key <code>&quot;null&quot;</code> will be represented with <code>'null</code> symbol and JSON <code>null</code> too, but that does not have bad consequences for the user.</p>
-<h4 id="example-one">Example One</h4>
-<p>Take for instance the following JSON text:</p>
-<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript">[<span class="kw">true</span><span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="dv">42</span><span class="op">,</span> <span class="kw">null</span>]</code></pre></div>
-<p>It will result in the following calls to <code>PROC</code>:</p>
-<div class="sourceCode"><pre class="sourceCode scheme"><code class="sourceCode scheme">(proc &#39;json-structure &#39;array-open)
-(proc &#39;json-value <span class="dv">#t</span>)
-(proc &#39;json-value <span class="dv">#f</span>)
-(proc &#39;json-value <span class="dv">42</span>)
-(proc &#39;json-value &#39;null)
-(proc &#39;json-structure &#39;array-close)</code></pre></div>
-<h4 id="example-two">Example Two</h4>
-<p>Take for instance the following JSON text:</p>
-<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript">[<span class="st">&quot;hello&quot;</span><span class="op">,</span> <span class="st">&quot;world&quot;</span><span class="op">,</span> <span class="op">{</span><span class="st">&quot;truth&quot;</span><span class="op">:</span> [<span class="dv">42</span>]<span class="op">}</span>]</code></pre></div>
-<p>It will result in the following calls to <code>PROC</code>:</p>
-<div class="sourceCode"><pre class="sourceCode scheme"><code class="sourceCode scheme">(proc &#39;json-structure &#39;array-open)
-(proc &#39;json-value <span class="st">&quot;hello&quot;</span>)
-(proc &#39;json-value <span class="st">&quot;world&quot;</span>)
-(proc &#39;json-structure &#39;object-open)
-(proc &#39;json-value &#39;truth)
-(proc &#39;json-structure &#39;array-open)
-(proc &#39;json-value <span class="dv">42</span>)
-(proc &#39;json-structure &#39;array-close)
-(proc &#39;json-structure &#39;object-close)
-(proc &#39;json-structure &#39;array-close)</code></pre></div>
-<h3 id="json-read-port-object"><code>(json-read [port]) → object</code></h3>
-<p>JSON reader procedure.  <code>PORT</code> must be a textual input port.  The default value of <code>PORT</code> is the value returned by the procedure <code>current-input-port</code>.  The returned value is a scheme object.</p>
-<p>The mapping between JSON types and Scheme objects is the following:</p>
-<ul>
-<li><code>null</code> → the symbol <code>'null</code></li>
-<li><code>true</code> → <code>#t</code></li>
-<li><code>false</code> → <code>#f</code></li>
-<li>number → number</li>
-<li>string → string</li>
-<li>array → vector</li>
-<li>object → association list with keys that are symbols</li>
-</ul>
-<h3 id="json-write-obj-port-unspecified"><code>(json-write obj [port]) → unspecified</code></h3>
-<p>JSON writer procedure.  <code>PORT</code> must be a textual output port.  The default value of <code>PORT</code> is the value returned by the procedure <code>current-output-port</code>.  The returned value is unspecified.</p>
-<p><code>json-write</code> will validate that <code>OBJ</code> can be serialized into JSON before writing to <code>PORT</code>.  In the case where <code>OBJ</code> is not an object or composition of the following types, an error that satisfies <code>json-error?</code> is raised:</p>
-<ul>
-<li>symbol <code>'null</code></li>
-<li>boolean</li>
-<li>real number</li>
-<li>string</li>
-<li>vector</li>
-<li>association list</li>
-</ul>
-<h2 id="implementation">Implementation</h2>
-<p>The sample implementation is available in <a href="https://github.com/scheme-requests-for-implementation/srfi-180">this Git repo</a>.
-</p>
-<h2 id="acknowledgements">Acknowledgements</h2>
-<p>Give credit where credit is due.</p>
-<h2 id="copyright">Copyright</h2>
-<p>Copyright &copy; 2020 Amirouche Boubekki.</p>
-<p>Test files under <code>json/files</code> copyright &copy; 2016 Nicolas Seriot.</p>
-<p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the &quot;Software&quot;), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
-<p>The above copyright notice and this permission notice (including the next paragraph) shall be included in all copies or substantial portions of the Software.</p>
-<p>THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
-  <hr>
-  <address>Editor: <a href="mailto:srfi-editors+at+srfi+dot+schemers+dot+org">Arthur A. Gleckler</a></address>
-</body>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <meta http-equiv="Content-Style-Type" content="text/css" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link href="/favicon.png" rel="icon" sizes="192x192" type="image/png" />
+        <meta name="generator" content="pandoc" />
+        <title></title>
+        <link rel="stylesheet" href="/srfi.css" type="text/css" />
+        <style type="text/css">code{white-space: pre;}</style>
+        <style type="text/css">
+         div.sourceCode { overflow-x: auto; }
+         table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+             margin: 0; padding: 0; vertical-align: baseline; border: none; }
+         table.sourceCode { width: 100%; line-height: 100%; }
+         td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+         td.sourceCode { padding-left: 5px; }
+         code > span.kw { color: #007020; font-weight: bold; } /* Keyword */
+         code > span.dt { color: #902000; } /* DataType */
+         code > span.dv { color: #40a070; } /* DecVal */
+         code > span.bn { color: #40a070; } /* BaseN */
+         code > span.fl { color: #40a070; } /* Float */
+         code > span.ch { color: #4070a0; } /* Char */
+         code > span.st { color: #4070a0; } /* String */
+         code > span.co { color: #60a0b0; font-style: italic; } /* Comment */
+         code > span.ot { color: #007020; } /* Other */
+         code > span.al { color: #ff0000; font-weight: bold; } /* Alert */
+         code > span.fu { color: #06287e; } /* Function */
+         code > span.er { color: #ff0000; font-weight: bold; } /* Error */
+         code > span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+         code > span.cn { color: #880000; } /* Constant */
+         code > span.sc { color: #4070a0; } /* SpecialChar */
+         code > span.vs { color: #4070a0; } /* VerbatimString */
+         code > span.ss { color: #bb6688; } /* SpecialString */
+         code > span.im { } /* Import */
+         code > span.va { color: #19177c; } /* Variable */
+         code > span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+         code > span.op { color: #666666; } /* Operator */
+         code > span.bu { } /* BuiltIn */
+         code > span.ex { } /* Extension */
+         code > span.pp { color: #bc7a00; } /* Preprocessor */
+         code > span.at { color: #7d9029; } /* Attribute */
+         code > span.do { color: #ba2121; font-style: italic; } /* Documentation */
+         code > span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+         code > span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+         code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+        </style>
+    </head>
+    <body>
+        <h1 id="title">Title</h1>
+        <p>JSON</p>
+        <h2 id="author">Author</h2>
+        <p>Amirouche Boubekki</p>
+        <h2 id="status">Status</h2>
+        <p>This SRFI is currently in <em>draft</em> status.  Here is <a href="https://srfi.schemers.org/srfi-process.html">an explanation</a> of each status that a SRFI can hold.  To provide input on this SRFI, please send email to <code><a href="mailto:srfi+minus+180+at+srfi+dotschemers+dot+org">srfi-180@<span class="antispam">nospam</span>srfi.schemers.org</a></code>.  To subscribe to the list, follow <a href="https://srfi.schemers.org/srfi-list-subscribe.html">these instructions</a>.  You can access previous messages via the mailing list <a href="https://srfi-email.schemers.org/srfi-180">archive</a>.</p>
+        <ul>
+            <li>Received: 2020/1/17</li>
+            <li>60-day deadline: 2020/3/18</li>
+            <li>Draft #1 published: 2020/1/17</li>
+            <li>Draft #2 published: 2020/2/XY</li>
+        </ul>
+        <h2 id="abstract">Abstract</h2>
+        <p>This library describes a JavaScript Object Notation (JSON) parser and printer.  It supports JSON that may be bigger than memory.</p>
+        <h2 id="rationale">Rationale</h2>
+        <p><a href="https://www.json.org/">JSON</a> is a <i>de facto</i> industry standard for data exchange.</p>
+        <p>For best interoperability, the sample implementation is based on <a href="https://tools.ietf.org/html/rfc8259">RFC8259</a>, and the tests are based on <a href="https://github.com/nst/JSONTestSuite/">JSONTestSuite</a>.</p>
+        <p>The mapping between JSON types and Scheme objects is not trivial because a given mapping might not be the best for every situation.  That is the reason why this library make public the procedure <code>json-fold</code> inspired from Oleg Kiselyov's <code>foldts</code>.</p>
+        <h2 id="specification">Specification</h2>
+        <h3 id="json-error-obj-boolean"><code>(json-error? obj) → boolean</code></h3>
+        <p>Returns <code>#t</code> is <code>OBJ</code> is an error object that is specific to this library.  This exception can be raised during <code>json-stream-read</code>, <code>json-read</code> or <code>json-write</code>.</p>
+        <h3 id="json-error-reason-obj-string"><code>(json-error-reason obj) → string</code></h3>
+        <p>Return a string explaining the reason for the error.  This should be human-readable.</p>
+        <h3 id="json-null-obj-boolean"><code>(json-null? obj) → boolean</code></h3>
+        <p>Return <code>#t</code> if <code>OBJ</code> is the scheme symbol <code>'null</code>, which represents the JSON <code>null</code> in Scheme.  In all other cases, return <code>#f</code>.</p>
+        <h3 id="json-tokens-port-or-generator-generator"><code>(json-tokens [port-or-generator])</code></h3>
+        <p><code>PORT-OR-GENERATOR</code> can be textual input port or a generator of characters.  Its default value is <code>current-input-port</code>.  <code>json-tokens</code> returns a generator of tokens as Scheme objects.  The returned generator can yield the following tokens:</p>
+        <ul>
+            <li>a boolean object</li>
+            <li>a string object</li>
+            <li>a number object</li>
+        </ul>
+        <p>Also those symbols can be generated:</p>
+        <ul>
+            <li><code>'null</code> representing the JSON <code>null</code> value</li>
+            <li><code>'colon</code> representing a colon control character</li>
+            <li><code>'comma</code> representing the comma control character</li>
+            <li><code>'array-start</code> representing an open bracket</li>
+            <li><code>'array-end</code> representing a close bracket</li>
+            <li><code>'object-start</code> representing a curly open bracket</li>
+            <li><code>'object-end</code> representing a curly close bracket</li>
+        </ul>
+        <code>json-tokens</code> may raise an object that satisfy the predicate <code>json-error?</code>.
+
+        <h3 id="json-nesting-depth-limit-parameter"><code>json-nesting-depth-limit</code> parameter</h3>
+        <p>Parameter the maximum nesting depth of JSON text that can be read by <code>json-generator-read</code>, <code>json-fold</code>, and <code>json-read</code>.  If the value returned by this parameter is reached, the implementation must raise an error that satisfy <code>json-error?</code>.  This parameter does not apply to the procedure <code>json-tokens</code>.</p>
+
+        <h3 id="json-generator-read-port-or-generator-tokens-generator"><code>(json-generator-read [port-or-generator [tokens]]) → generator</code></h3>
+        <p>Streaming event-based JSON reader.  <code>PORT</code> must be a textual input port or a generator of characters.  The default value of <code>PORT</code> is the value returned by the procedure <code>current-input-port</code>.  The second argument <code>TOKENS</code> is a generator of tokens such as returned by <code>json-tokens</code>.  <code>json-generator-read</code> returns a generator of pairs.</p>
+        <p>The <code>car</code> of a generated pair is dubbed <code>event-type</code>.  It is a symbol.  It can be the following:</p>
+        <ul>
+            <li><code>'json-structure</code></li>
+            <li><code>'json-value</code></li>
+        </ul>
+        <p>The <code>cdr</code> of the generated pair is dubbed <code>obj</code>:</p>
+        <ul>
+            <li><p>If <code>event-type</code> is <code>'json-structure</code>, then <code>obj</code> can be:</p>
+                <ul>
+                    <li><p><code>'array-start</code> symbol denoting that an array should be constructed.</p></li>
+                    <li><p><code>'array-end</code> symbol denoting that the construction of the array for which the last <code>'array-start</code> that was generated and not closed is finished.</p></li>
+                    <li><p><code>'object-start</code> symbol denoting that an object should be constructed.  The object's key-value pairs are emitted in sequence like those in a property list (plist).  That is the generation of a key is always followed by the generation of a value.  Otherwise, the JSON would be invalid and <code>json-generator-read</code> would raise error.</li>
+                    <li><p><code>'object-end</code> symbol denoting that the construction of the object for which the last <code>object-start</code> was generated and not closed is finished.</p></li>
+                </ul></li>
+            <li><p>If <code>event-type</code> is <code>'json-value</code>, then <code>obj</code> is a Scheme object that can be of the following types:</p>
+                <ul>
+                    <li><p>symbol</p></li>
+                    <li><p>number</p></li>
+                    <li><p>string</p></li>
+                </ul></li>
+        </ul>
+        <p>In the case where nesting of arrays or objects reach the value returned by the parameter <code>json-nesting-depth-limit</code> must raise an object that satisfies the predicate <code>json-error?</code></p>
+        <p>In cases where the JSON is invalid, the generator returned by <code>json-generator-read</code> should raise an object that satisfies the predicate <code>json-error?</code>.</p>
+        <p>Otherwise, if <code>TOKENS</code> describes valid JSON text, the generator returned by <code>json-generator-read</code> must yield an end-of-file object in two situations:</p>
+        <ul>
+            <li>The first time <code>TOKENS</code> is called, it returns an object that is a boolean, a number, a string or the symbol <code>'null</code>.</li>
+            <li>The first time <code>TOKENS</code> is called, it returns a symbol that is not the symbol <code>'null</code>.  <code>json-generator-read</code> expects the symbols described in procedure <code>json-tokens</code>.  When the underlying JSON text is valid, it should be the symbol starting a structure: <code>'object-start</code> or <code>'array-start</code>.  The end-of-file object is generated when when that structure is finished.</li>
+        </ul>
+
+        <p>Otherwise said, the generator returned by <code>json-generator-read</code> will parse at most one JSON value or one top-level structure.  If <code>TOKENS</code> is not finished, like it is the cases of <a href="http://jsonlines.org/">JSON lines</a>, the user must call again <code>json-generator-read</code> with the same <code>TOKENS</code>.</p>
+
+        <p><strong>Note:</strong> Given that <code>event-type</code> is <code>'json-value</code>, there are two occasions where <code>obj</code> can be a symbol: 1) the JSON contains a <code>null</code> JSON value, in that case <code>'null</code> symbol is produced; 2) In a JSON object, keys are produced with the type <code>'json-value</code> and the <code>obj</code> is a symbol.  In particular the key <code>&quot;null&quot;</code> will be represented with <code>'null</code> symbol and JSON <code>null</code> too, but that does not have bad consequences for the user.</p>
+
+        <h4 id="example-one">Example One</h4>
+        <p>The following JSON text:</p>
+        <div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript">[<span class="kw">true</span><span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="dv">42</span><span class="op">,</span> <span class="kw">null</span>]</code></pre></div>
+        <p>Will generate the following pairs:</p>
+        <div class="sourceCode"><pre class="sourceCode scheme"><code class="sourceCode scheme">(cons &#39;json-structure &#39;array-start)
+(cons &#39;json-value <span class="dv">#t</span>)
+(cons &#39;json-value <span class="dv">#f</span>)
+(cons &#39;json-value <span class="dv">42</span>)
+(cons &#39;json-value &#39;null)
+(cons &#39;json-structure &#39;array-end)</code></pre></div>
+        <h4 id="example-two">Example Two</h4>
+        <p>The following JSON text:</p>
+        <div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript">[<span class="st">&quot;hello&quot;</span><span class="op">,</span> <span class="st">&quot;world&quot;</span><span class="op">,</span> <span class="op">{</span><span class="st">&quot;truth&quot;</span><span class="op">:</span> [<span class="dv">42</span>]<span class="op">}</span>]</code></pre></div>
+        <p>Will generate the following pairs:</p>
+        <div class="sourceCode"><pre class="sourceCode scheme"><code class="sourceCode scheme">(cons &#39;json-structure &#39;array-start)
+(cons &#39;json-value <span class="st">&quot;hello&quot;</span>)
+(cons &#39;json-value <span class="st">&quot;world&quot;</span>)
+(cons &#39;json-structure &#39;object-start)
+(cons &#39;json-value &#39;truth)
+(cons &#39;json-structure &#39;array-start)
+(cons &#39;json-value <span class="dv">42</span>)
+(cons &#39;json-structure &#39;array-end)
+(cons &#39;json-structure &#39;object-end)
+(cons &#39;json-structure &#39;array-end)</code></pre></div>
+
+        <h3 id="json-fold"><code>(json-fold array-start array-end object-start object-end fhere seed events)</code></h3>
+        <p>Fundamental JSON iterator.</p>
+
+        <p><code>EVENTS</code> must be a generator that follows the protocol of <code>json-generator-read</code>.</p>
+        <p><code>SEED</code> must be a Scheme object.  It is passed to <code>ARRAY-START</code>, <code>OBJECT-START</code> or <code>FHERE</code> depending on what <code>EVENTS</code> yields.</p>
+        <p><code>(FHERE leaf seed)</code> is called when the <code>car</code> of the generated event is the symbol <code>'json-value</code>.  <code>LEAF</code> is a Scheme object of the following types: symbol, boolean, number or string.  <code>LEAF</code> is the <code>cdr</code> of the associated event.</p>
+        <p><code>(OBJECT-START seed)</code> is called with the seed and must return the seed that will be used as the seed of the recursive call to <code>json-fold</code>.  That is, the returned object will be passed to the first child, if any, that in turns must return a new seed until there is no more children at which point <code>OBJECT-END</code> is called with the resulting seed.</p>
+        <p><code>(OBJECT-END seed-children seed)</code> is called when a JSON object is finished with the resulting seed called <code>SEED-CHILDREN</code> and <code>SEED</code>.</p>
+        <p><code>ARRAY-START</code> and <code>ARRAY-END</code> take the same arguments, but are called for iterating on JSON arrays.</p>
+        <p><code>json-fold</code> will go through the generator <code>EVENTS</code> calling the above procedures until:</p>
+        <ul>
+            <li><code>EVENTS</code> yields an object that satisfy the predicate <code>eof-object?</code></li>
+            <li>All structures that were started, were ended.</li>
+        </ul>
+        <p><code>json-fold</code> may check that the generator <code>EVENTS</code> respect the <code>json-generator-read</code> protocol. If it does, when the protocol is not respected, it must raise a <code>json-error?</code>. Otherwise, the behavior is unspecified.</p>
+
+        <h3 id="json-read-port-or-generator-object"><code>(json-read [port-or-generator]) → object</code></h3>
+        <p>JSON reader procedure.  <code>PORT-OR-GENERATOR</code> must be a textual input port or generator of characters.  The default value of <code>PORT-OR-GENERATOR</code> is the value returned by the procedure <code>current-input-port</code>.  The returned value is a scheme object.</p>
+        <p>The mapping between JSON types and Scheme objects is the following:</p>
+        <ul>
+            <li><code>null</code> → the symbol <code>'null</code></li>
+            <li><code>true</code> → <code>#t</code></li>
+            <li><code>false</code> → <code>#f</code></li>
+            <li>number → number</li>
+            <li>string → string</li>
+            <li>array → vector</li>
+            <li>object → association list with keys that are symbols</li>
+        </ul>
+
+        <p>In the case where nesting of arrays or objects reach the value returned by the parameter <code>json-nesting-depth-limit</code> must raise an object that satisfies the predicate <code>json-error?</code></p>
+
+        <h3 id="json-write-obj-port-unspecified"><code>(json-write obj [port]) → unspecified</code></h3>
+        <p>JSON writer procedure.  <code>PORT</code> must be a textual output port.  The default value of <code>PORT</code> is the value returned by the procedure <code>current-output-port</code>.  The returned value is unspecified.</p>
+        <p><code>json-write</code> will validate that <code>OBJ</code> can be serialized into JSON before writing to <code>PORT</code>.  An error that satisfies <code>json-error?</code> is raised, in the case where <code>OBJ</code> is not an object or composition of the following types:</p>
+        <ul>
+            <li>symbol <code>'null</code></li>
+            <li>boolean</li>
+            <li>number must be integers or inexact rational (that is they must not
+                be complex, infinite, nan, or exact rational that are not integers)</li>
+            <li>string</li>
+            <li>vector</li>
+            <li>association list</li>
+        </ul>
+        <h2 id="implementation">Implementation</h2>
+        <p>The sample implementation is available in <a href="https://github.com/scheme-requests-for-implementation/srfi-180">this Git repo</a>.
+        </p>
+        <h2 id="acknowledgements">Acknowledgements</h2>
+        <p>Thanks to Oleg Kiselyov.</p>
+        <h2 id="copyright">Copyright</h2>
+        <p>Copyright &copy; 2020 Amirouche Boubekki.</p>
+        <p>Test files under <code>json/files</code> copyright &copy; 2016 Nicolas Seriot.</p>
+        <p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the &quot;Software&quot;), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
+        <p>The above copyright notice and this permission notice (including the next paragraph) shall be included in all copies or substantial portions of the Software.</p>
+        <p>THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+        <hr>
+        <address>Editor: <a href="mailto:srfi-editors+at+srfi+dot+schemers+dot+org">Arthur A. Gleckler</a></address>
+    </body>
 </html>

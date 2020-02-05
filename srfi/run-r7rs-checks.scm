@@ -14,7 +14,7 @@
 
 (define (filename->library-name filename)
   ;; TODO: try to guess ;)
-  '(json-checks))
+  '(srfi 180 checks))
 
 (define (filename->library-exports filename)
   (define library (call-with-input-file filename read))
@@ -38,8 +38,7 @@
         #t)))
 
 (if (null? (cddr (command-line)))
-    ;; execute tests in lexicographic order
-    (let loop ((symbols (filename->library-exports filename))
+    (let loop ((symbols (reverse (filename->library-exports filename)))
                (errors? #f))
       (if (null? symbols)
           (exit (if errors? 1 0))
