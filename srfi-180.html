@@ -253,8 +253,11 @@
 
         <p>In the case where nesting of arrays or objects reaches the value returned by the parameter <code>json-nesting-depth-limit</code>, <code>json-read</code> must raise an object that satisfies the predicate <code>json-error?</code></p>
 
-        <h3 id="json-write-obj-port-unspecified"><code>(json-write obj [port]) → unspecified</code></h3>
-        <p>JSON writer procedure.  <code>PORT</code> must be a textual output port.  The default value of <code>PORT</code> is the value returned by the procedure <code>current-output-port</code>.  The returned value is unspecified.</p>
+        <h3 id="json-accumulator-port-or-generator"><code>(json-accumulator-write port-or-accumulator) → procedure</code></h3>
+        <p>Streaming event-based JSON writer.  <code>PORT-OR-ACCUMULATOR</code> must be a textual output port, or an accumulator that accepts characters and strings.  It returns an accumulator procedure that accept events as first and only argument that follows the same protocol as described in <code>json-generator-read</code>.  Any deviation from the protocol must raise an error that statisfies <code>json-error?</code>.  In particular, objects and arrays must be properly nested.</p>
+
+        <h3 id="json-write-obj-port-or-accumulator-unspecified"><code>(json-write obj [port-or-accumulator]) → unspecified</code></h3>
+        <p>JSON writer procedure.  <code>PORT-OR-ACCUMULATOR</code> must be a textual output port, or an accumulator that accepts characters and strings.  The default value of <code>PORT-OR-ACCUMULATOR</code> is the value returned by the procedure <code>current-output-port</code>.  The returned value is unspecified.</p>
         <p><code>json-write</code> will validate that <code>OBJ</code> can be serialized into JSON before writing to <code>PORT</code>.  An error that satisfies <code>json-error?</code> is raised in the case where <code>OBJ</code> is not an object or composition of the following types:</p>
         <ul>
             <li>symbol <code>'null</code></li>
@@ -263,8 +266,9 @@
                 be complex, infinite, nan, or exact rationals that are not integers)</li>
             <li>string</li>
             <li>vector</li>
-            <li>association list</li>
+            <li>association list with keys as symbols</li>
         </ul>
+
         <h2 id="implementation">Implementation</h2>
         <p>The sample implementation is available in <a href="https://github.com/scheme-requests-for-implementation/srfi-180">this Git repo</a>.
         </p>
