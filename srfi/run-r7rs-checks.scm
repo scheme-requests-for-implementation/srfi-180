@@ -38,7 +38,7 @@
         #t)))
 
 (if (null? (cddr (command-line)))
-    (let loop ((symbols (reverse (filename->library-exports filename)))
+    (let loop ((symbols (filename->library-exports filename))
                (errors? #f))
       (if (null? symbols)
           (exit (if errors? 1 0))

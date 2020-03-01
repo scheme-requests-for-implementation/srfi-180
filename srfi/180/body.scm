@@ -1,3 +1,7 @@
+(define (pk . args)
+  (write args)(newline)
+  (car (reverse args)))
+
 (define (json-null? obj)
   (eq? obj 'null))
 
@@ -331,14 +335,33 @@
     (let loop ((kid-seed (fdown seed tree))
                (kids (cdr tree)))
       (if (null? kids)
-      (fup seed kid-seed tree)
-      (loop (foldts fdown fup fhere kid-seed (car kids))
-        (cdr kids)))))))
+          (fup seed kid-seed tree)
+          (loop (foldts fdown fup fhere kid-seed (car kids))
+                (cdr kids)))))))
 
-(define (json-fold array-start array-end object-start object-end fhere seed events)
+(define (json-fold proc array-start array-end object-start object-end seed events)
 
   ;; json-fold is inspired from the above foldts definition, unlike
-  ;; the above definition, it is continuation-passing-style.
+  ;; the above definition, it is continuation-passing-style.  fhere is
+  ;; renamed PROC.  Unlike foldts, json-fold will call (proc obj seed)
+  ;; everytime a JSON value or complete structure is read from the
+  ;; EVENTS generator, where OBJ will be: a) In the case of
+  ;; structures, the the result of the recursive call or b) a JSON
+  ;; value.
+
+  ;; json-fold will terminates in three cases:
+  ;;
+  ;; - eof-object was generated, return the seed.
+  ;;
+  ;; - event-type 'array-end is generated, if EVENTS is returned by
+  ;; json-generator-read, it means a complete array was read.
+  ;;
+  ;; - event-type 'object-end is generated, similarly, if EVENTS is
+  ;; returned by json-generator-read, it means complete array was
+  ;; read.
+  ;;
+  ;; IF EVENTS does not follow the json-generator-read protocol, the
+  ;; behavior is unspecified.
 
   (define (ruse seed k)
     (lambda ()
@@ -347,7 +370,7 @@
           (if (eof-object? event)
               (begin (k seed) #f)
               (case (car event)
-                ((json-value) (loop (fhere (cdr event) seed)))
+                ((json-value) (loop (proc (cdr event) seed)))
                 ((json-structure)
                  (case (cdr event)
                    ;; termination cases
@@ -355,9 +378,9 @@
                    ((object-end) (k seed) #f)
                    ;; recursion
                    ((array-start) (ruse (array-start seed)
-                                        (lambda (out) (loop (array-end out seed)))))
+                                        (lambda (out) (loop (proc (array-end out) seed)))))
                    ((object-start) (ruse (object-start seed)
-                                         (lambda (out) (loop (object-end out seed)))))
+                                         (lambda (out) (loop (proc (object-end out) seed)))))
                    (else (error 'json "Oops0!"))))))))))
 
   (define (make-trampoline-fold k)
@@ -379,47 +402,205 @@
   (define %root '(root))
 
   (define (array-start seed)
+    ;; array will be read as a list, then converted into a vector in
+    ;; array-end.
     '())
 
-  (define (array-end items seed)
-    (let ((out (list->vector (reverse items))))
-      (if (eq? seed %root)
-          out
-          (cons out seed))))
+  (define (array-end items)
+    (list->vector (reverse items)))
 
   (define (object-start seed)
+    ;; object will be read as a property list, then converted into an
+    ;; alist in object-end.
     '())
 
   (define (plist->alist plist)
     ;; PLIST is a list of even items, otherwise json-read-generator
-    ;; would have raised a json-error.  json-generator-read is
-    ;; validating.
+    ;; would have raised a json-error.
     (let loop ((plist plist)
                (out '()))
       (if (null? plist)
           out
           (loop (cddr plist) (cons (cons (string->symbol (cadr plist)) (car plist)) out)))))
 
-  (define (object-end plist seed)
-    (let ((alist (plist->alist plist)))
-      (if (eq? seed %root)
-          alist
-          (cons alist seed))))
+  (define object-end plist->alist)
 
-  (define (fhere obj seed)
+  (define (proc obj seed)
+    ;; proc is called when a JSON value or structure was completly
+    ;; read.  The parse result is passed as OBJ.  In the case where
+    ;; what is parsed is a JSON value (ie. the event-type is 'json-value)
+    ;; then OBJ is simply the token that is read that can be 'null, a
+    ;; number or a string.  In the case where what is parsed is a JSON
+    ;; structure, OBJ is what is returned by OBJECT-END or ARRAY-END.
+
     (if (eq? seed %root)
+        ;; It is toplevel, a complete JSON value or structure was
+        ;; read, return it.
         obj
+        ;; This is not toplevel, hence json-fold is called recursivly,
+        ;; to parse an array or object.  Both ARRAY-START and
+        ;; OBJECT-START return an empty list as a seed to serve as an
+        ;; accumulator.  Both OBJECT-END and ARRAY-END expect a list
+        ;; as argument.
         (cons obj seed)))
 
   (let ((events (json-generator-read port-or-generator)))
-    (json-fold array-start array-end object-start object-end fhere %root events)))
+    (json-fold proc array-start array-end object-start object-end %root events)))
 
 (define json-read
   (case-lambda
     (() (json-read (current-input-port)))
     ((port-or-generator) (%json-read port-or-generator))))
 
-(define (%json-write obj port)
+;; write procedures
+
+(define (json-accumulator-write accumulator)
+
+  (define (write-json-char char accumulator)
+    (case char
+      ((#\x00) (accumulator "\\u0000"))
+      ((#\") (accumulator "\\\""))
+      ((#\\) (accumulator "\\\\"))
+      ((#\/) (accumulator "\\/"))
+      ((#\return) (accumulator "\\r"))
+      ((#\newline) (accumulator "\\n"))
+      ((#\tab) (accumulator "\\t"))
+      ((#\backspace) (accumulator "\\b"))
+      ((#\x0c) (accumulator "\\f"))
+      ((#\x0d) (accumulator "\\r"))
+      (else (accumulator char))))
+
+  (define (write-json-string string accumulator)
+    (accumulator #\")
+    (string-for-each
+     (lambda (char) (write-json-char char accumulator))
+     string)
+    (accumulator #\"))
+
+  (define (write-json-value obj accumulator)
+    (cond
+     ((eq? obj 'null) (accumulator "null"))
+     ((boolean? obj) (if obj
+                         (accumulator "true")
+                         (accumulator "false")))
+     ((string? obj) (write-json-string obj accumulator))
+     ((number? obj) (accumulator (number->string obj)))
+     (else (raise (make-json-error "Invalid json value.")))))
+
+  (define (raise-invalid-event event)
+    (raise event))
+  ;;(raise (make-json-error "json-accumulator-write: invalid event.")))
+
+  (define (object-start k)
+    (lambda (accumulator event)
+      (accumulator #\{)
+      (case (car event)
+        ((json-value)
+         (let ((key (cdr event)))
+           (unless (symbol? key) (raise-invalid-event event))
+           (write-json-string (symbol->string key) accumulator)
+           (object-value k)))
+        ((json-structure)
+         (case (cdr event)
+           ((object-end)
+            (accumulator #\})
+            k)
+           (else (raise-invalid-event event))))
+        (else (raise-invalid-event event)))))
+
+  (define (object-value k)
+    (lambda (accumulator event)
+      (accumulator #\:)
+      (case (car event)
+        ((json-value)
+         (write-json-value (cdr event) accumulator)
+         (object-maybe-continue k))
+        ((json-structure)
+         (case (cdr event)
+           ((array-start)
+            (array-start (object-maybe-continue k)))
+           ((object-start)
+            (object-start (object-maybe-continue k)))
+           (else (raise-invalid-event event))))
+        (else (raise-invalid-event event)))))
+
+  (define (object-maybe-continue k)
+    (lambda (accumulator event)
+      (case (car event)
+        ((json-value)
+         (accumulator #\,)
+         (let ((key (cdr event)))
+           (unless (symbol? key) (raise-invalid-event event))
+           (write-json-value (symbol->string key) accumulator)
+           (object-value k)))
+        ((json-structure)
+         (case (cdr event)
+           ((object-end)
+            (accumulator #\})
+            k)
+           (else (raise-invalid-event event))))
+        (else (raise-invalid-event event)))))
+
+  (define (array-start k)
+    (lambda (accumulator event)
+      (accumulator #\[)
+      (case (car event)
+        ((json-value)
+         (write-json-value (cdr event) accumulator)
+         (array-maybe-continue k))
+        ((json-structure)
+         (case (cdr event)
+           ((array-end)
+            (accumulator #\])
+            k)
+           ((array-start) (array-start (array-maybe-continue k)))
+           ((object-start) (object-start (array-maybe-continue k)))
+           (else (raise-invalid-event event))))
+        (else (raise-invalid-event event)))))
+
+  (define (array-maybe-continue k)
+    (lambda (accumulator event)
+      (case (car event)
+        ((json-value)
+         (accumulator #\,)
+         (write-json-value (cdr event) accumulator)
+         (array-maybe-continue k))
+        ((json-structure)
+         (case (cdr event)
+           ((array-end)
+            (accumulator #\])
+            k)
+           ((array-start)
+            (accumulator #\,)
+            (array-start (array-maybe-continue k)))
+           ((object-start)
+            (accumulator #\,)
+            (object-start (array-maybe-continue k)))
+           (else (raise-invalid-event event))))
+        (else (raise-invalid-event event)))))
+
+  (define (start accumulator event)
+    (case (car event)
+      ((json-value)
+       (write-json-value (cdr event) accumulator)
+       raise-invalid-event)
+      ((json-structure)
+       (case (cdr event)
+         ((array-start)
+          (array-start raise-invalid-event))
+         ((object-start)
+          (object-start raise-invalid-event))
+         (else (raise-invalid-event event))))
+      (else (raise-invalid-event event))))
+
+  (assume (procedure? accumulator)
+          "ACCUMULATOR does look like a valid accumulator.")
+
+  (let ((k start))
+    (lambda (event)
+      (set! k (k accumulator event)))))
+
+(define (%json-write obj accumulator)
 
   (define (void)
     (if #f #f))
@@ -450,73 +631,48 @@
                 obj))
      (else (raise (make-json-error "Unexpected object")))))
 
-  (define (write-json-char char port)
-    (case char
-      ((#\x00) (write-string "\\u0000" port))
-      ((#\") (write-string "\\\"" port))
-      ((#\\) (write-string "\\\\" port))
-      ((#\/) (write-string "\\/" port))
-      ((#\return) (write-string "\\r" port))
-      ((#\newline) (write-string "\\n" port))
-      ((#\tab) (write-string "\\t" port))
-      ((#\backspace) (write-string "\\b" port))
-      ((#\x0c) (write-string "\\f" port))
-      ((#\x0d) (write-string "\\r" port))
-      (else (write-char char port))))
-
-  (define (write-json-string string port)
-    (write-char #\" port)
-    (string-for-each
-     (lambda (char) (write-json-char char port))
-     string)
-    (write-char #\" port))
-
-  (define (write obj port)
+  (define (write obj accumulator)
     (cond
-     ((eq? obj 'null) (write-string "null" port))
-     ((boolean? obj) (if obj
-                         (write-string "true" port)
-                         (write-string "false" port)))
-     ((string? obj) (write-json-string obj port))
-     ((number? obj) (write-string (number->string obj) port))
+     ((or (eq? obj 'null)
+          (boolean? obj)
+          (string? obj)
+          (symbol? obj)
+          (number? obj))
+      (accumulator (cons 'json-value obj)))
      ((vector? obj)
-      (write-char #\[ port)
-      (unless (zero? (vector-length obj))
-        (let loop ((index 0))
-          (unless (zero? (- (vector-length obj) index 1))
-            (let ((obj (vector-ref obj index)))
-              (write obj port)
-              (write-string ", " port)
-              (loop (+ index 1)))))
-        (write (vector-ref obj (- (vector-length obj) 1)) port))
-      (write-char #\] port))
-     ;; XXX: pair? instead of list? because it is faster.
+      (accumulator '(json-structure . array-start))
+      (vector-for-each (lambda (obj) (write obj accumulator)) obj)
+      (accumulator '(json-structure . array-end)))
+     ((null? obj)
+      (accumulator '(json-structure . object-start))
+      (accumulator '(json-structure . object-end)))
      ((pair? obj)
-      (write-char #\{ port)
-      (let ((last (let loop ((obj obj))
-                    (if (null? (cdr obj))
-                        (car obj)
-                        (let ((key (caar obj))
-                              (value (cdar obj)))
-                          (write-json-string (symbol->string key) port)
-                          (write-string ": " port)
-                          (write value port)
-                          (write-string ", " port)
-                          (loop (cdr obj)))))))
-        (let ((key (car last))
-              (value (cdr last)))
-          (write-json-string (symbol->string key) port)
-          (write-string ": " port)
-          (write value port)))
-      (write-char #\} port))
-     ((null? obj) (write-string "{}" port))
-     (else (raise (cons 'programming-error obj)))))
+      (accumulator '(json-structure . object-start))
+      (for-each (lambda (pair)
+                  (write (car pair) accumulator)
+                  (write (cdr pair) accumulator))
+                obj)
+      (accumulator '(json-structure . object-end)))
+     (else (error "Unexpected error!"))))
 
-  (assume (and (textual-port? port) (output-port? port)))
+  (assume (procedure? accumulator))
   (raise-unless-valid? obj)
-  (write obj port))
+  (write obj (json-accumulator-write accumulator)))
+
+(define (port->accumulator port)
+  (lambda (char-or-string)
+    (cond
+     ((char? char-or-string) (write-char char-or-string port))
+     ((string? char-or-string) (write-string char-or-string port))
+     (else (raise (make-json-error "Not a char or string"))))))
 
 (define json-write
   (case-lambda
     ((obj) (json-write obj (current-output-port)))
-    ((obj port) (%json-write obj port))))
+    ((obj port-or-accumulator)
+     (assume (or (procedure? port-or-accumulator)
+                  (and (textual-port? port-or-accumulator)
+                       (output-port? port-or-accumulator))))
+     (if (procedure? port-or-accumulator)
+         (%json-write obj port-or-accumulator)
+         (%json-write obj (port->accumulator port-or-accumulator))))))

@@ -93,10 +93,11 @@
         <code>json-tokens</code> may raise an object that satisfies the predicate <code>json-error?</code>.
 
         <h3 id="json-nesting-depth-limit-parameter"><code>json-nesting-depth-limit</code> parameter</h3>
-        <p>Parameter holding the maximum nesting depth of JSON text that can be read by <code>json-generator-read</code>, <code>json-fold</code>, and <code>json-read</code>.  If the value returned by this parameter is reached, the implementation must raise an error that satisfies <code>json-error?</code>.  This parameter does not apply to the procedure <code>json-tokens</code>.</p>
+        <p>Parameter holding a number that represent the maximum nesting depth of JSON text that can be read by <code>json-generator-read</code>, <code>json-fold</code>, and <code>json-read</code>.  If the value returned by this parameter is reached, the implementation must raise an error that satisfies <code>json-error?</code>.  This parameter does not apply to the procedure <code>json-tokens</code>.</p>
+        <p>The default value of <code>json-nesting-depth-limit</code> is <code>+inf.0</code>.</p>
 
-        <h3 id="json-generator-read-port-or-generator-tokens-generator"><code>(json-generator-read [port-or-generator [tokens]]) → generator</code></h3>
-        <p>Streaming event-based JSON reader.  <code>PORT-OR-GENERATOR</code> must be a textual input port or a generator of characters.  The default value of <code>PORT-OR-GENERATOR</code> is the value returned by the procedure <code>current-input-port</code>.  The second argument <code>TOKENS</code> is a generator of tokens such as returned by <code>json-tokens</code>.  <code>json-generator-read</code> returns a generator of pairs.</p>
+        <h3 id="json-generator-read-tokens-generator"><code>(json-generator-read [tokens]) → generator</code></h3>
+        <p>Streaming event-based JSON reader.  <code>TOKENS</code> is a generator of tokens such as returned by the procedure <code>json-tokens</code>.  <code>json-generator-read</code> returns a generator of pairs.</p>
         <p>The <code>car</code> of a generated pair is dubbed <code>event-type</code>.  It is a symbol.  It can be the following:</p>
         <ul>
             <li><code>'json-structure</code></li>
@@ -108,12 +109,14 @@
                 <ul>
                     <li><p><code>'array-start</code> symbol denoting that an array should be constructed.</p></li>
                     <li><p><code>'array-end</code> symbol denoting that the construction of the array for which the last <code>'array-start</code> that was generated and not closed is finished.</p></li>
-                    <li><p><code>'object-start</code> symbol denoting that an object should be constructed.  The object's key-value pairs are emitted in sequence like those in a property list (plist).  That is, the generation of a key is always followed by the generation of a value.  Otherwise, the JSON would be invalid and <code>json-generator-read</code> would raise an error.</li>
+                    <li>
+                        <p><code>'object-start</code> symbol denoting that an object should be constructed.  The object's key-value pairs are emitted in sequence like those in a property list (plist) where keys are strings.  That is, the generation of a key is always followed by the generation of a value.  Otherwise, the JSON would be invalid and <code>json-generator-read</code> would raise an error.</p>
+                    </li>
                     <li><p><code>'object-end</code> symbol denoting that the construction of the object for which the last <code>object-start</code> was generated and not closed is finished.</p></li>
                 </ul></li>
             <li><p>If <code>event-type</code> is <code>'json-value</code>, then <code>obj</code> is a Scheme object that can be of the following types:</p>
                 <ul>
-                    <li><p>symbol</p></li>
+                    <li><p>the symbol <code>'null</code></p></li>
                     <li><p>number</p></li>
                     <li><p>string</p></li>
                 </ul></li>
@@ -123,12 +126,10 @@
         <p>Otherwise, if <code>TOKENS</code> describes valid JSON text, the generator returned by <code>json-generator-read</code> must yield an end-of-file object in two situations:</p>
         <ul>
             <li>The first time <code>TOKENS</code> is called, it returns an object that is a boolean, a number, a string or the symbol <code>'null</code>.</li>
-            <li>The first time <code>TOKENS</code> is called, it returns a symbol that is not the symbol <code>'null</code>.  <code>json-generator-read</code> expects the symbols described in procedure <code>json-tokens</code>.  When the underlying JSON text is valid, it should be the symbol starting a structure: <code>'object-start</code> or <code>'array-start</code>.  The end-of-file object is generated when when that structure is finished.</li>
+            <li>The first time <code>TOKENS</code> is called, it returns a symbol that is not the symbol <code>'null</code>.  When the underlying JSON text is valid, it should be the symbol starting a structure: <code>'object-start</code> or <code>'array-start</code>, then end-of-file object is generated when that structure is finished.</li>
         </ul>
 
-        <p>In other words, the generator returned by <code>json-generator-read</code> will parse at most one JSON value or one top-level structure.  If <code>TOKENS</code> is not finished, as in the case of <a href="http://jsonlines.org/">JSON lines</a>, the user must call <code>json-generator-read</code> again with the same <code>TOKENS</code>.</p>
-
-        <p><strong>Note:</strong> Given that <code>event-type</code> is <code>'json-value</code>, there are two occasions where <code>obj</code> can be a symbol: 1) the JSON contains a <code>null</code> JSON value, in which case <code>'null</code> symbol is produced; 2) in a JSON object, keys are produced with the type <code>'json-value</code> and the <code>obj</code> is a symbol.  In particular the key <code>&quot;null&quot;</code> will be represented with the <code>'null</code> symbol, as will JSON <code>null</code>, but that does not have bad consequences for the user.</p>
+        <p>In other words, the generator returned by <code>json-generator-read</code> will parse at most one JSON value or one top-level structure.  If <code>TOKENS</code> is not finished, as in the case of <a href="http://jsonlines.org/">JSON lines</a>, the user should call again <code>json-generator-read</code> with the same <code>TOKENS</code>.</p>
 
         <h4 id="example-one">Example One</h4>
         <p>The following JSON text:</p>
@@ -148,31 +149,97 @@
 (cons &#39;json-value <span class="st">&quot;hello&quot;</span>)
 (cons &#39;json-value <span class="st">&quot;world&quot;</span>)
 (cons &#39;json-structure &#39;object-start)
-(cons &#39;json-value &#39;truth)
+(cons &#39;json-value <span class="st">&quot;truth&quot;</span>)
 (cons &#39;json-structure &#39;array-start)
 (cons &#39;json-value <span class="dv">42</span>)
 (cons &#39;json-structure &#39;array-end)
 (cons &#39;json-structure &#39;object-end)
 (cons &#39;json-structure &#39;array-end)</code></pre></div>
 
-        <h3 id="json-fold"><code>(json-fold array-start array-end object-start object-end fhere seed events)</code></h3>
+        <h3 id="json-fold"><code>(json-fold proc array-start array-end object-start object-end seed events)</code></h3>
         <p>Fundamental JSON iterator.</p>
 
-        <p><code>EVENTS</code> must be a generator that follows the protocol of <code>json-generator-read</code>.</p>
-        <p><code>SEED</code> must be a Scheme object.  It is passed to <code>ARRAY-START</code>, <code>OBJECT-START</code> or <code>FHERE</code> depending on what <code>EVENTS</code> yields.</p>
-        <p><code>(FHERE leaf seed)</code> is called when the <code>car</code> of the generated event is the symbol <code>'json-value</code>.  <code>LEAF</code> is a Scheme object of the following types: symbol, boolean, number or string.  <code>LEAF</code> is the <code>cdr</code> of the associated event.</p>
-        <p><code>(OBJECT-START seed)</code> is called with the seed and must return the seed that will be used as the seed of the recursive call to <code>json-fold</code>.  That is, the returned object will be passed to the first child, if any, that in turn must return a new seed until there are no more children, at which point <code>OBJECT-END</code> is called with the resulting seed.</p>
-        <p><code>(OBJECT-END seed-children seed)</code> is called when a JSON object is finished with the resulting seed called <code>SEED-CHILDREN</code> and <code>SEED</code>.</p>
+        <p><code>json-fold</code> will go through the events generated by <code>EVENTS</code> that may follow the protocol of <code>json-generator-read</code>.  <code>json-fold</code> will call the procedures passed as argument:</p>
+        <ul>
+            <li>
+                <code>(PROC obj seed)</code> is called when a JSON value is generated or a complete JSON structure was read.  In the case of a JSON value, an event-type <code>'json-value</code> was generated, and <code>OBJ</code> is the <code>cdr</code> of the event.  In the case of a JSON structure, array or object, <code>OBJ</code> is the value returned respectively by <code>ARRAY-END</code> or <code>OBJECT-END</code>.  <code>PROC</code> should return the new seed, that will be used to iterate over the rest of the generator.  Termination is described below.
+            </li>
+            <li>
+                <code>(OBJECT-START seed)</code> is called with a seed and should return a seed that will be used as the seed of the iteration over the key and values of that object.
+            </li>
+            <li>
+                <code>(OBJECT-END seed)</code> is called with a seed and should return a new seed that is the result of the iteration over an object.
+            </li>
+        </ul>
         <p><code>ARRAY-START</code> and <code>ARRAY-END</code> take the same arguments, but are called for iterating on JSON arrays.</p>
-        <p><code>json-fold</code> will go through the generator <code>EVENTS</code> calling the above procedures until:</p>
+        <p><code>json-fold</code> must return the seed when:</p>
         <ul>
             <li><code>EVENTS</code> yields an object that satisfies the predicate <code>eof-object?</code></li>
-            <li>All structures that were started have ended.</li>
+            <li>All structures, array or object, that were started have ended.  The returned object is <code>(PROC obj SEED)</code> where <code>obj</code> is the object returned by <code>ARRAY-END</code> or <code>OBJECT-END</code></li>
         </ul>
-        <p><code>json-fold</code> may check that the generator <code>EVENTS</code> respects the <code>json-generator-read</code> protocol. If it does check, then when the protocol is not respected, <code>json-fold</code> must raise a <code>json-error?</code>. Otherwise, the behavior is unspecified.</p>
+        <p>The behavior of <code>json-fold</code> is only specified when <code>EVENTS</code> follows the <code>json-generator-read</code> protocol.  <code>json-fold</code> may check that <code>EVENTS</code> respects the <code>json-generator-read</code> protocol.  In that case, if the protocol is not respected, <code>json-fold</code> must raise a <code>json-error?</code>.</p>
+        <p>Otherwise, the behavior of <code>json-fold</code> is unspecified.</p>
+
+        <h4 id="json-fold-example">Example</h4>
+
+        <p><code>json-read</code> can be defined in terms of <code>json-fold</code>:</p>
+
+        <div>
+            <pre>
+(define (%json-read port-or-generator)
+
+  (define %root '(root))
+
+  (define (array-start seed)
+    ;; array will be read as a list, then converted into a vector in
+    ;; array-end.
+    '())
+
+  (define (array-end items)
+    (list->vector (reverse items)))
+
+  (define (object-start seed)
+    ;; object will be read as a property list, then converted into an
+    ;; alist in object-end.
+    '())
+
+  (define (plist->alist plist)
+    ;; PLIST is a list of even items, otherwise json-read-generator
+    ;; would have raised a json-error.
+    (let loop ((plist plist)
+               (out '()))
+      (if (null? plist)
+          out
+          (loop (cddr plist) (cons (cons (string->symbol (cadr plist)) (car plist)) out)))))
+
+  (define object-end plist->alist)
+
+  (define (proc obj seed)
+    ;; proc is called when a JSON value or structure was completly
+    ;; read.  The parse result is passed as OBJ.  In the case where
+    ;; what is parsed is a JSON value (ie. the event-type is 'json-value)
+    ;; then OBJ is simply the token that is read that can be 'null, a
+    ;; number or a string.  In the case where what is parsed is a JSON
+    ;; structure, OBJ is what is returned by OBJECT-END or ARRAY-END.
+
+    (if (eq? seed %root)
+        ;; It is toplevel, a complete JSON value or structure was
+        ;; read, return it.
+        obj
+        ;; This is NOT toplevel, hence json-fold is called recursivly,
+        ;; to parse an array or object.  Both ARRAY-START and
+        ;; OBJECT-START return an empty list as a seed to serve as an
+        ;; accumulator.  Both OBJECT-END and ARRAY-END expect a list
+        ;; as argument.
+        (cons obj seed)))
+
+  (let ((events (json-generator-read port-or-generator)))
+    (json-fold proc array-start array-end object-start object-end %root events)))
+            </pre>
+        </div>
 
         <h3 id="json-read-port-or-generator-object"><code>(json-read [port-or-generator]) → object</code></h3>
-        <p>JSON reader procedure.  <code>PORT-OR-GENERATOR</code> must be a textual input port or generator of characters.  The default value of <code>PORT-OR-GENERATOR</code> is the value returned by the procedure <code>current-input-port</code>.  The returned value is a Scheme object.</p>
+        <p>JSON reader procedure.  <code>PORT-OR-GENERATOR</code> must be a textual input port or generator of characters.  The default value of <code>PORT-OR-GENERATOR</code> is the value returned by the procedure <code>current-input-port</code>.  The returned value is a Scheme object.  <code>json-read</code> must return only the first toplevel JSON value or structure.  When they are multiple toplevel values or structures in <code>PORT-OR-GENERATOR</code>, the user should call <code>json-read</code> several times to read all of it.</p>
         <p>The mapping between JSON types and Scheme objects is the following:</p>
         <ul>
             <li><code>null</code> → the symbol <code>'null</code></li>
@@ -186,8 +253,11 @@
 
         <p>In the case where nesting of arrays or objects reaches the value returned by the parameter <code>json-nesting-depth-limit</code>, <code>json-read</code> must raise an object that satisfies the predicate <code>json-error?</code></p>
 
-        <h3 id="json-write-obj-port-unspecified"><code>(json-write obj [port]) → unspecified</code></h3>
-        <p>JSON writer procedure.  <code>PORT</code> must be a textual output port.  The default value of <code>PORT</code> is the value returned by the procedure <code>current-output-port</code>.  The returned value is unspecified.</p>
+        <h3 id="json-accumulator-port-or-generator"><code>(json-accumulator-write port-or-accumulator) → procedure</code></h3>
+        <p>Streaming event-based JSON writer.  <code>PORT-OR-ACCUMULATOR</code> must be a textual output port, or an accumulator that accepts characters and strings.  It returns an accumulator procedure that accept events as first and only argument that follows the same protocol as described in <code>json-generator-read</code>.  Any deviation from the protocol must raise an error that statisfies <code>json-error?</code>.  In particular, objects and arrays must be properly nested.</p>
+
+        <h3 id="json-write-obj-port-or-accumulator-unspecified"><code>(json-write obj [port-or-accumulator]) → unspecified</code></h3>
+        <p>JSON writer procedure.  <code>PORT-OR-ACCUMULATOR</code> must be a textual output port, or an accumulator that accepts characters and strings.  The default value of <code>PORT-OR-ACCUMULATOR</code> is the value returned by the procedure <code>current-output-port</code>.  The returned value is unspecified.</p>
         <p><code>json-write</code> will validate that <code>OBJ</code> can be serialized into JSON before writing to <code>PORT</code>.  An error that satisfies <code>json-error?</code> is raised in the case where <code>OBJ</code> is not an object or composition of the following types:</p>
         <ul>
             <li>symbol <code>'null</code></li>
@@ -196,8 +266,9 @@
                 be complex, infinite, nan, or exact rationals that are not integers)</li>
             <li>string</li>
             <li>vector</li>
-            <li>association list</li>
+            <li>association list with keys as symbols</li>
         </ul>
+
         <h2 id="implementation">Implementation</h2>
         <p>The sample implementation is available in <a href="https://github.com/scheme-requests-for-implementation/srfi-180">this Git repo</a>.
         </p>
@@ -209,7 +280,7 @@
         <p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the &quot;Software&quot;), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
         <p>The above copyright notice and this permission notice (including the next paragraph) shall be included in all copies or substantial portions of the Software.</p>
         <p>THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
-        <hr>
+        <hr/>
         <address>Editor: <a href="mailto:srfi-editors+at+srfi+dot+schemers+dot+org">Arthur A. Gleckler</a></address>
     </body>
 </html>
