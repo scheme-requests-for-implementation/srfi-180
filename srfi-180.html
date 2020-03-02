@@ -93,7 +93,7 @@
         <code>json-tokens</code> may raise an object that satisfies the predicate <code>json-error?</code>.
 
         <h3 id="json-nesting-depth-limit-parameter"><code>json-nesting-depth-limit</code> parameter</h3>
-        <p>Parameter holding a number that represent the maximum nesting depth of JSON text that can be read by <code>json-generator-read</code>, <code>json-fold</code>, and <code>json-read</code>.  If the value returned by this parameter is reached, the implementation must raise an error that satisfies <code>json-error?</code>.  This parameter does not apply to the procedure <code>json-tokens</code>.</p>
+        <p>Parameter holding a number that represents the maximum nesting depth of JSON text that can be read by <code>json-generator-read</code>, <code>json-fold</code>, and <code>json-read</code>.  If the value returned by this parameter is reached, the implementation must raise an error that satisfies <code>json-error?</code>.  This parameter does not apply to the procedure <code>json-tokens</code>.</p>
         <p>The default value of <code>json-nesting-depth-limit</code> is <code>+inf.0</code>.</p>
 
         <h3 id="json-generator-read-tokens-generator"><code>(json-generator-read [tokens]) → generator</code></h3>
@@ -215,7 +215,7 @@
   (define object-end plist->alist)
 
   (define (proc obj seed)
-    ;; proc is called when a JSON value or structure was completly
+    ;; PROC is called when a JSON value or structure was completely
     ;; read.  The parse result is passed as OBJ.  In the case where
     ;; what is parsed is a JSON value (ie. the event-type is 'json-value)
     ;; then OBJ is simply the token that is read that can be 'null, a
@@ -226,7 +226,7 @@
         ;; It is toplevel, a complete JSON value or structure was
         ;; read, return it.
         obj
-        ;; This is NOT toplevel, hence json-fold is called recursivly,
+        ;; This is NOT toplevel, hence json-fold is called recursively,
         ;; to parse an array or object.  Both ARRAY-START and
         ;; OBJECT-START return an empty list as a seed to serve as an
         ;; accumulator.  Both OBJECT-END and ARRAY-END expect a list
