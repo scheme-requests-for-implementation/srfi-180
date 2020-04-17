@@ -214,7 +214,7 @@
                        (set! generator (gcons next generator))
                        number))))))))))
 
-(define (%json-generator-read tokens)
+(define (%json-generator tokens)
 
   (define (array-maybe-continue tokens k)
     (lambda ()
@@ -275,10 +275,10 @@
      (else (raise (make-json-error "Is it JSON text?!"))))))
 
   (define (end-of-json-sequence)
-    ;; json-generator-read returns a generator that reads one
+    ;; json-generator returns a generator that reads one
     ;; top-level json. If there is more than one top-level json value
     ;; in the generator separated with space as it is the case of
-    ;; json-lines, you need to call json-generator-read with the same
+    ;; json-lines, you need to call json-generator with the same
     ;; port or generator.
     (values (eof-object) #f))
 
@@ -297,19 +297,19 @@
 
   (make-trampoline-generator tokens))
 
-(define json-generator-read-error
+(define json-generator-error
   "Argument does not look like a generator and is not a textual input port.")
 
-(define json-generator-read
+(define json-generator
   (case-lambda
-    (() (json-generator-read (current-input-port)))
+    (() (json-generator (current-input-port)))
     ((port-or-generator)
      (cond
       ((procedure? port-or-generator)
-       (%json-generator-read (json-tokens port-or-generator)))
+       (%json-generator (json-tokens port-or-generator)))
       ((and (textual-port? port-or-generator) (input-port? port-or-generator))
-       (%json-generator-read (json-tokens (port->generator port-or-generator))))
-      (else (error 'json json-generator-read-error port-or-generator))))))
+       (%json-generator (json-tokens (port->generator port-or-generator))))
+      (else (error 'json json-generator-error port-or-generator))))))
 
 ;; XXX: procedure foldts is not used as-is. It was copied here for
 ;; documentation purpose (public domain, by Oleg Kiselyov).
@@ -354,13 +354,13 @@
   ;; - eof-object was generated, return the seed.
   ;;
   ;; - event-type 'array-end is generated, if EVENTS is returned by
-  ;; json-generator-read, it means a complete array was read.
+  ;; json-generator, it means a complete array was read.
   ;;
   ;; - event-type 'object-end is generated, similarly, if EVENTS is
-  ;; returned by json-generator-read, it means complete array was
+  ;; returned by json-generator, it means complete array was
   ;; read.
   ;;
-  ;; IF EVENTS does not follow the json-generator-read protocol, the
+  ;; IF EVENTS does not follow the json-generator protocol, the
   ;; behavior is unspecified.
 
   (define (ruse seed k)
@@ -444,7 +444,7 @@
         ;; as argument.
         (cons obj seed)))
 
-  (let ((events (json-generator-read port-or-generator)))
+  (let ((events (json-generator port-or-generator)))
     (json-fold proc array-start array-end object-start object-end %root events)))
 
 (define json-read

@@ -4,7 +4,7 @@
           json-error?
           json-error-reason
           json-fold
-          json-generator-read
+          json-generator
           json-read
           json-write)
 

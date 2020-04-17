@@ -93,11 +93,11 @@
         <code>json-tokens</code> may raise an object that satisfies the predicate <code>json-error?</code>.
 
         <h3 id="json-nesting-depth-limit-parameter"><code>json-nesting-depth-limit</code> parameter</h3>
-        <p>Parameter holding a number that represents the maximum nesting depth of JSON text that can be read by <code>json-generator-read</code>, <code>json-fold</code>, and <code>json-read</code>.  If the value returned by this parameter is reached, the implementation must raise an error that satisfies <code>json-error?</code>.  This parameter does not apply to the procedure <code>json-tokens</code>.</p>
+        <p>Parameter holding a number that represents the maximum nesting depth of JSON text that can be read by <code>json-generator</code>, <code>json-fold</code>, and <code>json-read</code>.  If the value returned by this parameter is reached, the implementation must raise an error that satisfies <code>json-error?</code>.  This parameter does not apply to the procedure <code>json-tokens</code>.</p>
         <p>The default value of <code>json-nesting-depth-limit</code> is <code>+inf.0</code>.</p>
 
-        <h3 id="json-generator-read-tokens-generator"><code>(json-generator-read [tokens]) → generator</code></h3>
-        <p>Streaming event-based JSON reader.  <code>TOKENS</code> is a generator of tokens such as returned by the procedure <code>json-tokens</code>.  <code>json-generator-read</code> returns a generator of pairs.</p>
+        <h3 id="json-generator-tokens-generator"><code>(json-generator [tokens]) → generator</code></h3>
+        <p>Streaming event-based JSON reader.  <code>TOKENS</code> is a generator of tokens such as returned by the procedure <code>json-tokens</code>.  <code>json-generator</code> returns a generator of pairs.</p>
         <p>The <code>car</code> of a generated pair is dubbed <code>event-type</code>.  It is a symbol.  It can be the following:</p>
         <ul>
             <li><code>'json-structure</code></li>
@@ -110,7 +110,7 @@
                     <li><p><code>'array-start</code> symbol denoting that an array should be constructed.</p></li>
                     <li><p><code>'array-end</code> symbol denoting that the construction of the array for which the last <code>'array-start</code> that was generated and not closed is finished.</p></li>
                     <li>
-                        <p><code>'object-start</code> symbol denoting that an object should be constructed.  The object's key-value pairs are emitted in sequence like those in a property list (plist) where keys are strings.  That is, the generation of a key is always followed by the generation of a value.  Otherwise, the JSON would be invalid and <code>json-generator-read</code> would raise an error.</p>
+                        <p><code>'object-start</code> symbol denoting that an object should be constructed.  The object's key-value pairs are emitted in sequence like those in a property list (plist) where keys are strings.  That is, the generation of a key is always followed by the generation of a value.  Otherwise, the JSON would be invalid and <code>json-generator</code> would raise an error.</p>
                     </li>
                     <li><p><code>'object-end</code> symbol denoting that the construction of the object for which the last <code>object-start</code> was generated and not closed is finished.</p></li>
                 </ul></li>
@@ -123,14 +123,14 @@
                 </ul></li>
         </ul>
         <p>In the case where nesting of arrays or objects reaches the value returned by the parameter <code>json-nesting-depth-limit</code>, it must raise an object that satisfies the predicate <code>json-error?</code></p>
-        <p>In cases where the JSON is invalid, the generator returned by <code>json-generator-read</code> should raise an object that satisfies the predicate <code>json-error?</code>.</p>
-        <p>Otherwise, if <code>TOKENS</code> describes valid JSON text, the generator returned by <code>json-generator-read</code> must yield an end-of-file object in two situations:</p>
+        <p>In cases where the JSON is invalid, the generator returned by <code>json-generator</code> should raise an object that satisfies the predicate <code>json-error?</code>.</p>
+        <p>Otherwise, if <code>TOKENS</code> describes valid JSON text, the generator returned by <code>json-generator</code> must yield an end-of-file object in two situations:</p>
         <ul>
             <li>The first time <code>TOKENS</code> is called, it returns an object that is a boolean, a number, a string or the symbol <code>'null</code>.</li>
             <li>The first time <code>TOKENS</code> is called, it returns a symbol that is not the symbol <code>'null</code>.  When the underlying JSON text is valid, it should be the symbol starting a structure: <code>'object-start</code> or <code>'array-start</code>, then end-of-file object is generated when that structure is finished.</li>
         </ul>
 
-        <p>In other words, the generator returned by <code>json-generator-read</code> will parse at most one JSON value or one top-level structure.  If <code>TOKENS</code> is not finished, as in the case of <a href="http://jsonlines.org/">JSON lines</a>, the user should call again <code>json-generator-read</code> with the same <code>TOKENS</code>.</p>
+        <p>In other words, the generator returned by <code>json-generator</code> will parse at most one JSON value or one top-level structure.  If <code>TOKENS</code> is not finished, as in the case of <a href="http://jsonlines.org/">JSON lines</a>, the user should call again <code>json-generator</code> with the same <code>TOKENS</code>.</p>
 
         <h4 id="example-one">Example One</h4>
         <p>The following JSON text:</p>
@@ -160,7 +160,7 @@
         <h3 id="json-fold"><code>(json-fold proc array-start array-end object-start object-end seed events)</code></h3>
         <p>Fundamental JSON iterator.</p>
 
-        <p><code>json-fold</code> will go through the events generated by <code>EVENTS</code> that may follow the protocol of <code>json-generator-read</code>.  <code>json-fold</code> will call the procedures passed as argument:</p>
+        <p><code>json-fold</code> will go through the events generated by <code>EVENTS</code> that may follow the protocol of <code>json-generator</code>.  <code>json-fold</code> will call the procedures passed as argument:</p>
         <ul>
             <li>
                 <code>(PROC obj seed)</code> is called when a JSON value is generated or a complete JSON structure was read.  In the case of a JSON value, an event-type <code>'json-value</code> was generated, and <code>OBJ</code> is the <code>cdr</code> of the event.  In the case of a JSON structure, array or object, <code>OBJ</code> is the value returned respectively by <code>ARRAY-END</code> or <code>OBJECT-END</code>.  <code>PROC</code> should return the new seed, that will be used to iterate over the rest of the generator.  Termination is described below.
@@ -178,7 +178,7 @@
             <li><code>EVENTS</code> yields an object that satisfies the predicate <code>eof-object?</code></li>
             <li>All structures, array or object, that were started have ended.  The returned object is <code>(PROC obj SEED)</code> where <code>obj</code> is the object returned by <code>ARRAY-END</code> or <code>OBJECT-END</code></li>
         </ul>
-        <p>The behavior of <code>json-fold</code> is only specified when <code>EVENTS</code> follows the <code>json-generator-read</code> protocol.  <code>json-fold</code> may check that <code>EVENTS</code> respects the <code>json-generator-read</code> protocol.  In that case, if the protocol is not respected, <code>json-fold</code> must raise a <code>json-error?</code>.</p>
+        <p>The behavior of <code>json-fold</code> is only specified when <code>EVENTS</code> follows the <code>json-generator</code> protocol.  <code>json-fold</code> may check that <code>EVENTS</code> respects the <code>json-generator</code> protocol.  In that case, if the protocol is not respected, <code>json-fold</code> must raise a <code>json-error?</code>.</p>
         <p>Otherwise, the behavior of <code>json-fold</code> is unspecified.</p>
 
         <h4 id="json-fold-example">Example</h4>
@@ -234,7 +234,7 @@
         ;; as argument.
         (cons obj seed)))
 
-  (let ((events (json-generator-read port-or-generator)))
+  (let ((events (json-generator port-or-generator)))
     (json-fold proc array-start array-end object-start object-end %root events)))
             </pre>
         </div>
@@ -255,7 +255,7 @@
         <p>In the case where nesting of arrays or objects reaches the value returned by the parameter <code>json-nesting-depth-limit</code>, <code>json-read</code> must raise an object that satisfies the predicate <code>json-error?</code></p>
 
         <h3 id="json-accumulator-port-or-generator"><code>(json-accumulator-write port-or-accumulator) → procedure</code></h3>
-        <p>Streaming event-based JSON writer.  <code>PORT-OR-ACCUMULATOR</code> must be a textual output port, or an accumulator that accepts characters and strings.  It returns an accumulator procedure that accept events as first and only argument that follows the same protocol as described in <code>json-generator-read</code>.  Any deviation from the protocol must raise an error that statisfies <code>json-error?</code>.  In particular, objects and arrays must be properly nested.</p>
+        <p>Streaming event-based JSON writer.  <code>PORT-OR-ACCUMULATOR</code> must be a textual output port, or an accumulator that accepts characters and strings.  It returns an accumulator procedure that accept events as first and only argument that follows the same protocol as described in <code>json-generator</code>.  Any deviation from the protocol must raise an error that statisfies <code>json-error?</code>.  In particular, objects and arrays must be properly nested.</p>
 
         <h3 id="json-write-obj-port-or-accumulator-unspecified"><code>(json-write obj [port-or-accumulator]) → unspecified</code></h3>
         <p>JSON writer procedure.  <code>PORT-OR-ACCUMULATOR</code> must be a textual output port, or an accumulator that accepts characters and strings.  The default value of <code>PORT-OR-ACCUMULATOR</code> is the value returned by the procedure <code>current-output-port</code>.  The returned value is unspecified.</p>
