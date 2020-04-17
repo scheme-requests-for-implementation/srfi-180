@@ -274,16 +274,16 @@
       (values '(json-structure . object-start) (object-start tokens k)))
      (else (raise (make-json-error "Is it JSON text?!"))))))
 
-  (define (end-of-json-sequence)
-    ;; json-generator returns a generator that reads one
-    ;; top-level json. If there is more than one top-level json value
-    ;; in the generator separated with space as it is the case of
-    ;; json-lines, you need to call json-generator with the same
-    ;; port or generator.
+  (define (end-of-top-level-value)
+    ;; json-generator returns a generator that reads one top-level
+    ;; json. If there is more than one top-level json value in the
+    ;; generator separated with space as it is the case of json-lines,
+    ;; you need to call json-generator with the same port or
+    ;; generator.
     (values (eof-object) #f))
 
   (define (make-trampoline-generator tokens)
-    (let ((continuation (lambda () (start tokens end-of-json-sequence))))
+    (let ((continuation (lambda () (start tokens end-of-top-level-value))))
       (lambda ()
         (when continuation
           (call-with-values continuation
@@ -454,7 +454,7 @@
 
 ;; write procedures
 
-(define (json-accumulator-write accumulator)
+(define (json-accumulator accumulator)
 
   (define (write-json-char char accumulator)
     (case char
@@ -489,7 +489,7 @@
 
   (define (raise-invalid-event event)
     (raise event))
-  ;;(raise (make-json-error "json-accumulator-write: invalid event.")))
+  ;;(raise (make-json-error "json-accumulator: invalid event.")))
 
   (define (object-start k)
     (lambda (accumulator event)
@@ -657,7 +657,7 @@
 
   (assume (procedure? accumulator))
   (raise-unless-valid? obj)
-  (write obj (json-accumulator-write accumulator)))
+  (write obj (json-accumulator accumulator)))
 
 (define (port->accumulator port)
   (lambda (char-or-string)

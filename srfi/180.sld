@@ -6,6 +6,7 @@
           json-fold
           json-generator
           json-read
+          json-accumulator
           json-write)
 
   (import (scheme base)
