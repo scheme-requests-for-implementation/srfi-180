@@ -254,7 +254,7 @@
 
         <p>In the case where nesting of arrays or objects reaches the value returned by the parameter <code>json-nesting-depth-limit</code>, <code>json-read</code> must raise an object that satisfies the predicate <code>json-error?</code></p>
 
-        <h3 id="json-accumulator-port-or-generator"><code>(json-accumulator-write port-or-accumulator) → procedure</code></h3>
+        <h3 id="json-accumulator-port-or-generator"><code>(json-accumulator port-or-accumulator) → procedure</code></h3>
         <p>Streaming event-based JSON writer.  <code>PORT-OR-ACCUMULATOR</code> must be a textual output port, or an accumulator that accepts characters and strings.  It returns an accumulator procedure that accept events as first and only argument that follows the same protocol as described in <code>json-generator</code>.  Any deviation from the protocol must raise an error that statisfies <code>json-error?</code>.  In particular, objects and arrays must be properly nested.</p>
 
         <h3 id="json-write-obj-port-or-accumulator-unspecified"><code>(json-write obj [port-or-accumulator]) → unspecified</code></h3>
