@@ -221,25 +221,25 @@
       (let ((token (tokens)))
         (case token
           ((comma) (start tokens (array-maybe-continue tokens k)))
-          ((array-end) (values '(json-structure . array-end) k))
+          ((array-end) (values 'array-end k))
           (else (raise (make-json-error "Invalid array, expected comma or array close.")))))))
 
   (define (array-start tokens k)
     (lambda ()
       (let ((token (tokens)))
         (if (eq? token 'array-end)
-            (values '(json-structure . array-end) k)
+            (values 'array-end k)
             (start (gcons token tokens) (array-maybe-continue tokens k))))))
 
   (define (object-maybe-continue tokens k)
     (lambda ()
       (let ((token (tokens)))
         (case token
-          ((object-end) (values '(json-structure . object-end) k))
+          ((object-end) (values 'object-end k))
           ((comma) (let ((token (tokens)))
                      (unless (string? token)
                        (raise (make-json-error "Invalid object, expected an object key")))
-                     (values (cons 'json-value token)
+                     (values token
                              (object-value tokens k))))
           (else (raise (make-json-error "Invalid object, expected comma or object close.")))))))
 
@@ -254,9 +254,9 @@
     (lambda ()
       (let ((token (tokens)))
         (cond
-         ((eq? token 'object-end) (values '(json-structure . object-end) k))
+         ((eq? token 'object-end) (values 'object-end k))
          ((string? token)
-          (values (cons 'json-value token)
+          (values token
                   (object-value tokens k)))
          (else (raise (make-json-error "Invalid object, expected object key or object close.")))))))
 
@@ -267,11 +267,11 @@
             (number? token)
             (string? token)
             (boolean? token))
-        (values (cons 'json-value token) k))
+        (values token k))
      ((eq? token 'array-start)
-      (values '(json-structure . array-start) (array-start tokens k)))
+      (values 'array-start (array-start tokens k)))
      ((eq? token 'object-start)
-      (values '(json-structure . object-start) (object-start tokens k)))
+      (values 'object-start (object-start tokens k)))
      (else (raise (make-json-error "Is it JSON text?!"))))))
 
   (define (end-of-top-level-value)
@@ -369,19 +369,16 @@
         (let ((event (events)))
           (if (eof-object? event)
               (begin (k seed) #f)
-              (case (car event)
-                ((json-value) (loop (proc (cdr event) seed)))
-                ((json-structure)
-                 (case (cdr event)
-                   ;; termination cases
-                   ((array-end) (k seed) #f)
-                   ((object-end) (k seed) #f)
-                   ;; recursion
-                   ((array-start) (ruse (array-start seed)
-                                        (lambda (out) (loop (proc (array-end out) seed)))))
-                   ((object-start) (ruse (object-start seed)
-                                         (lambda (out) (loop (proc (object-end out) seed)))))
-                   (else (error 'json "Oops0!"))))))))))
+              (case event
+                ;; termination cases
+                ((array-end) (k seed) #f)
+                ((object-end) (k seed) #f)
+                ;; recursion
+                ((array-start) (ruse (array-start seed)
+                                     (lambda (out) (loop (proc (array-end out) seed)))))
+                ((object-start) (ruse (object-start seed)
+                                      (lambda (out) (loop (proc (object-end out) seed)))))
+                (else (loop (proc event seed)))))))))
 
   (define (make-trampoline-fold k)
     (let ((thunk (ruse seed k)))
@@ -415,7 +412,7 @@
     '())
 
   (define (plist->alist plist)
-    ;; PLIST is a list of even items, otherwise json-read-generator
+    ;; PLIST is a list of even items, otherwise json-generator
     ;; would have raised a json-error.
     (let loop ((plist plist)
                (out '()))
@@ -428,10 +425,10 @@
   (define (proc obj seed)
     ;; proc is called when a JSON value or structure was completly
     ;; read.  The parse result is passed as OBJ.  In the case where
-    ;; what is parsed is a JSON value (ie. the event-type is 'json-value)
-    ;; then OBJ is simply the token that is read that can be 'null, a
-    ;; number or a string.  In the case where what is parsed is a JSON
-    ;; structure, OBJ is what is returned by OBJECT-END or ARRAY-END.
+    ;; what is parsed is a JSON simple json value then OBJ is simply
+    ;; the token that is read that can be 'null, a number or a string.
+    ;; In the case where what is parsed is a JSON structure, OBJ is
+    ;; what is returned by OBJECT-END or ARRAY-END.
 
     (if (eq? seed %root)
         ;; It is toplevel, a complete JSON value or structure was

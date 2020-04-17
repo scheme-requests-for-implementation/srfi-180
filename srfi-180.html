@@ -97,30 +97,18 @@
         <p>The default value of <code>json-nesting-depth-limit</code> is <code>+inf.0</code>.</p>
 
         <h3 id="json-generator-tokens-generator"><code>(json-generator [tokens]) → generator</code></h3>
-        <p>Streaming event-based JSON reader.  <code>TOKENS</code> is a generator of tokens such as returned by the procedure <code>json-tokens</code>.  <code>json-generator</code> returns a generator of pairs.</p>
-        <p>The <code>car</code> of a generated pair is dubbed <code>event-type</code>.  It is a symbol.  It can be the following:</p>
+        <p>Streaming event-based JSON reader.  <code>TOKENS</code> is a generator of tokens such as returned by the procedure <code>json-tokens</code>.  <code>json-generator</code> returns a generator scheme objects:</p>
         <ul>
-            <li><code>'json-structure</code></li>
-            <li><code>'json-value</code></li>
-        </ul>
-        <p>The <code>cdr</code> of the generated pair is dubbed <code>obj</code>:</p>
-        <ul>
-            <li><p>If <code>event-type</code> is <code>'json-structure</code>, then <code>obj</code> can be:</p>
-                <ul>
-                    <li><p><code>'array-start</code> symbol denoting that an array should be constructed.</p></li>
-                    <li><p><code>'array-end</code> symbol denoting that the construction of the array for which the last <code>'array-start</code> that was generated and not closed is finished.</p></li>
-                    <li>
-                        <p><code>'object-start</code> symbol denoting that an object should be constructed.  The object's key-value pairs are emitted in sequence like those in a property list (plist) where keys are strings.  That is, the generation of a key is always followed by the generation of a value.  Otherwise, the JSON would be invalid and <code>json-generator</code> would raise an error.</p>
-                    </li>
-                    <li><p><code>'object-end</code> symbol denoting that the construction of the object for which the last <code>object-start</code> was generated and not closed is finished.</p></li>
-                </ul></li>
-            <li><p>If <code>event-type</code> is <code>'json-value</code>, then <code>obj</code> is a Scheme object that can be of the following types:</p>
-                <ul>
-                    <li><p>the symbol <code>'null</code></p></li>
-                    <li><p>boolean</p></li>
-                    <li><p>number</p></li>
-                    <li><p>string</p></li>
-                </ul></li>
+            <li><p><code>'array-start</code> symbol denoting that an array should be constructed.</p></li>
+            <li><p><code>'array-end</code> symbol denoting that the construction of the array for which the last <code>'array-start</code> that was generated and not closed is finished.</p></li>
+            <li>
+                <p><code>'object-start</code> symbol denoting that an object should be constructed.  The object's key-value pairs are emitted in sequence like those in a property list (plist) where keys are strings.  That is, the generation of a key is always followed by the generation of a value.  Otherwise, the JSON would be invalid and <code>json-generator</code> would raise an error.</p>
+            </li>
+            <li><p><code>'object-end</code> symbol denoting that the construction of the object for which the last <code>object-start</code> was generated and not closed is finished.</p></li>
+            <li><p>the symbol <code>'null</code></p></li>
+            <li><p>boolean</p></li>
+            <li><p>number</p></li>
+            <li><p>string</p></li>
         </ul>
         <p>In the case where nesting of arrays or objects reaches the value returned by the parameter <code>json-nesting-depth-limit</code>, it must raise an object that satisfies the predicate <code>json-error?</code></p>
         <p>In cases where the JSON is invalid, the generator returned by <code>json-generator</code> should raise an object that satisfies the predicate <code>json-error?</code>.</p>
@@ -130,32 +118,9 @@
             <li>The first time <code>TOKENS</code> is called, it returns a symbol that is not the symbol <code>'null</code>.  When the underlying JSON text is valid, it should be the symbol starting a structure: <code>'object-start</code> or <code>'array-start</code>, then end-of-file object is generated when that structure is finished.</li>
         </ul>
 
-        <p>In other words, the generator returned by <code>json-generator</code> will parse at most one JSON value or one top-level structure.  If <code>TOKENS</code> is not finished, as in the case of <a href="http://jsonlines.org/">JSON lines</a>, the user should call again <code>json-generator</code> with the same <code>TOKENS</code>.</p>
+        <p>In other words, the generator returned by <code>json-generator</code> will parse at most one JSON value or one top-level structure.  If <code>TOKENS</code> is not finished, as in the case of <a href="http://jsonlines.org/">JSON lines</a>, the user should call <code>json-generator</code> again with the same <code>TOKENS</code>.</p>
 
-        <h4 id="example-one">Example One</h4>
-        <p>The following JSON text:</p>
-        <div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript">[<span class="kw">true</span><span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="dv">42</span><span class="op">,</span> <span class="kw">null</span>]</code></pre></div>
-        <p>will generate the following pairs:</p>
-        <div class="sourceCode"><pre class="sourceCode scheme"><code class="sourceCode scheme">(cons &#39;json-structure &#39;array-start)
-(cons &#39;json-value <span class="dv">#t</span>)
-(cons &#39;json-value <span class="dv">#f</span>)
-(cons &#39;json-value <span class="dv">42</span>)
-(cons &#39;json-value &#39;null)
-(cons &#39;json-structure &#39;array-end)</code></pre></div>
-        <h4 id="example-two">Example Two</h4>
-        <p>The following JSON text:</p>
-        <div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript">[<span class="st">&quot;hello&quot;</span><span class="op">,</span> <span class="st">&quot;world&quot;</span><span class="op">,</span> <span class="op">{</span><span class="st">&quot;truth&quot;</span><span class="op">:</span> [<span class="dv">42</span>]<span class="op">}</span>]</code></pre></div>
-        <p>will generate the following pairs:</p>
-        <div class="sourceCode"><pre class="sourceCode scheme"><code class="sourceCode scheme">(cons &#39;json-structure &#39;array-start)
-(cons &#39;json-value <span class="st">&quot;hello&quot;</span>)
-(cons &#39;json-value <span class="st">&quot;world&quot;</span>)
-(cons &#39;json-structure &#39;object-start)
-(cons &#39;json-value <span class="st">&quot;truth&quot;</span>)
-(cons &#39;json-structure &#39;array-start)
-(cons &#39;json-value <span class="dv">42</span>)
-(cons &#39;json-structure &#39;array-end)
-(cons &#39;json-structure &#39;object-end)
-(cons &#39;json-structure &#39;array-end)</code></pre></div>
+        <!-- TODO: add examples -->
 
         <h3 id="json-fold"><code>(json-fold proc array-start array-end object-start object-end seed events)</code></h3>
         <p>Fundamental JSON iterator.</p>
@@ -205,7 +170,7 @@
     '())
 
   (define (plist->alist plist)
-    ;; PLIST is a list of even items, otherwise json-read-generator
+    ;; PLIST is a list of even items, otherwise json-generator
     ;; would have raised a json-error.
     (let loop ((plist plist)
                (out '()))
@@ -218,10 +183,10 @@
   (define (proc obj seed)
     ;; PROC is called when a JSON value or structure was completely
     ;; read.  The parse result is passed as OBJ.  In the case where
-    ;; what is parsed is a JSON value (ie. the event-type is 'json-value)
-    ;; then OBJ is simply the token that is read that can be 'null, a
-    ;; number or a string.  In the case where what is parsed is a JSON
-    ;; structure, OBJ is what is returned by OBJECT-END or ARRAY-END.
+    ;; what is parsed is a JSON value then OBJ is simply the token
+    ;; that is read that can be 'null, a number or a string.
+    ;; In the case where what is parsed is a JSON structure,
+    ;; OBJ is what is returned by OBJECT-END or ARRAY-END.
 
     (if (eq? seed %root)
         ;; It is toplevel, a complete JSON value or structure was
