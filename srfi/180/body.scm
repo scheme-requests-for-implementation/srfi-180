@@ -41,7 +41,7 @@
           (begin (set! head? #f) head)
           (generator)))))
 
-(define (json-tokens generator)
+(define (%json-tokens generator)
 
   (define (maybe-ignore-whitespace generator)
     (let loop ((char (generator)))
@@ -213,6 +213,17 @@
                      (lambda (number next)
                        (set! generator (gcons next generator))
                        number))))))))))
+
+(define json-tokens
+  (case-lambda
+   (() (json-tokens (current-input-port)))
+   ((port-or-generator)
+    (cond
+     ((procedure? port-or-generator)
+      (%json-tokens port-or-generator))
+     ((and (textual-port? port-or-generator) (input-port? port-or-generator))
+       (%json-generator (port->generator port-or-generator)))
+     (else (error 'json "json-tokens error, argument is not valid" port-or-generator))))))
 
 (define (%json-generator tokens)
 
