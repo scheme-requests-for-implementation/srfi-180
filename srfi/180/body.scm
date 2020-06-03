@@ -350,7 +350,7 @@
           (loop (foldts fdown fup fhere kid-seed (car kids))
                 (cdr kids)))))))
 
-(define (json-fold proc array-start array-end object-start object-end seed events)
+(define (%json-fold proc array-start array-end object-start object-end seed port-or-generator)
 
   ;; json-fold is inspired from the above foldts definition, unlike
   ;; the above definition, it is continuation-passing-style.  fhere is
@@ -373,6 +373,8 @@
   ;;
   ;; IF EVENTS does not follow the json-generator protocol, the
   ;; behavior is unspecified.
+
+  (define events (json-generator port-or-generator))
 
   (define (ruse seed k)
     (lambda ()
@@ -404,6 +406,13 @@
     (if (eq? out %unset)
         (error 'json "Oops1!")
         out)))
+
+(define json-fold
+  (case-lambda
+   ((proc array-start array-end object-start object-end seed)
+    (json-fold proc array-start array-end object-start object-end seed (current-input-port)))
+   ((proc array-start array-end object-start object-end seed port-or-generator)
+    (%json-fold proc array-start array-end object-start object-end seed port-or-generator))))
 
 (define (%json-read port-or-generator)
 
@@ -452,8 +461,7 @@
         ;; as argument.
         (cons obj seed)))
 
-  (let ((events (json-generator port-or-generator)))
-    (json-fold proc array-start array-end object-start object-end %root events)))
+  (json-fold proc array-start array-end object-start object-end %root port-or-generator))
 
 (define json-read
   (case-lambda
