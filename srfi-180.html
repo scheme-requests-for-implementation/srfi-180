@@ -95,6 +95,7 @@
         <h3 id="json-nesting-depth-limit-parameter"><code>json-nesting-depth-limit</code> parameter</h3>
         <p>Parameter holding a number that represents the maximum nesting depth of JSON text that can be read by <code>json-generator</code>, <code>json-fold</code>, and <code>json-read</code>.  If the value returned by this parameter is reached, the implementation must raise an error that satisfies <code>json-error?</code>.  This parameter does not apply to the procedure <code>json-tokens</code>.</p>
         <p>The default value of <code>json-nesting-depth-limit</code> is <code>+inf.0</code>.</p>
+        <p>A proper value should be set on per application basis to mitigate the risks of Denial-Of-Service attacks</p>
 
         <h3 id="json-generator-tokens-generator"><code>(json-generator [tokens]) → generator</code></h3>
         <p>Streaming event-based JSON reader.  <code>TOKENS</code> is a generator of tokens such as returned by the procedure <code>json-tokens</code>.  <code>json-generator</code> returns a generator scheme objects:</p>
@@ -221,6 +222,10 @@
 
         <h3 id="json-accumulator-port-or-generator"><code>(json-accumulator port-or-accumulator) → procedure</code></h3>
         <p>Streaming event-based JSON writer.  <code>PORT-OR-ACCUMULATOR</code> must be a textual output port, or an accumulator that accepts characters and strings.  It returns an accumulator procedure that accept events as first and only argument that follows the same protocol as described in <code>json-generator</code>.  Any deviation from the protocol must raise an error that statisfies <code>json-error?</code>.  In particular, objects and arrays must be properly nested.</p>
+        <p>Mind the fact that most JSON parsers have a nesting limit
+        that is not documented by the standard. Even if you can
+        produce with this library arbitrarly nested JSON, you might
+        not be able to read it with another library.</p>
 
         <h3 id="json-write-obj-port-or-accumulator-unspecified"><code>(json-write obj [port-or-accumulator]) → unspecified</code></h3>
         <p>JSON writer procedure.  <code>PORT-OR-ACCUMULATOR</code> must be a textual output port, or an accumulator that accepts characters and strings.  The default value of <code>PORT-OR-ACCUMULATOR</code> is the value returned by the procedure <code>current-output-port</code>.  The returned value is unspecified.</p>
