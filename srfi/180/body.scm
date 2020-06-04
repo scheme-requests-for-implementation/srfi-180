@@ -251,14 +251,17 @@
                      (unless (string? token)
                        (raise (make-json-error "Invalid object, expected an object key")))
                      (values token
-                             (object-value tokens k))))
+                             (object-colon tokens k))))
           (else (raise (make-json-error "Invalid object, expected comma or object close.")))))))
 
-  (define (object-value tokens k)
+  (define (object-colon tokens k)
     (lambda ()
       (let ((token (tokens)))
         (if (eq? token 'colon)
-            (start tokens (object-maybe-continue tokens k))
+            (let ((token (tokens)))
+              (if (eof-object? token)
+                  (raise (make-json-error "Invalid object, expected object value."))
+                  (start (gcons token tokens) (object-maybe-continue tokens k))))
             (raise (make-json-error "Invalid object, expected colon."))))))
 
   (define (object-start tokens k)
@@ -268,22 +271,24 @@
          ((eq? token 'object-end) (values 'object-end k))
          ((string? token)
           (values token
-                  (object-value tokens k)))
+                  (object-colon tokens k)))
          (else (raise (make-json-error "Invalid object, expected object key or object close.")))))))
 
   (define (start tokens k)
     (let ((token (tokens)))
-      (cond
-       ((or (json-null? token)
-            (number? token)
-            (string? token)
-            (boolean? token))
-        (values token k))
-     ((eq? token 'array-start)
-      (values 'array-start (array-start tokens k)))
-     ((eq? token 'object-start)
-      (values 'object-start (object-start tokens k)))
-     (else (raise (make-json-error "Is it JSON text?!"))))))
+      (if (eof-object? token)
+          (values token k)
+          (cond
+           ((or (json-null? token)
+                (number? token)
+                (string? token)
+                (boolean? token))
+            (values token k))
+           ((eq? token 'array-start)
+            (values 'array-start (array-start tokens k)))
+           ((eq? token 'object-start)
+            (values 'object-start (object-start tokens k)))
+           (else (raise (make-json-error "Is it JSON text?!")))))))
 
   (define (end-of-top-level-value)
     ;; json-generator returns a generator that reads one top-level
@@ -404,7 +409,7 @@
   (let ((out %unset))
     (make-trampoline-fold (lambda (out*) (set! out out*)))
     (if (eq? out %unset)
-        (error 'json "Oops1!")
+        (error 'json "Is this JSON text")
         out)))
 
 (define json-fold
@@ -449,19 +454,27 @@
     ;; the token that is read that can be 'null, a number or a string.
     ;; In the case where what is parsed is a JSON structure, OBJ is
     ;; what is returned by OBJECT-END or ARRAY-END.
-
     (if (eq? seed %root)
-        ;; It is toplevel, a complete JSON value or structure was
-        ;; read, return it.
-        obj
-        ;; This is not toplevel, hence json-fold is called recursivly,
-        ;; to parse an array or object.  Both ARRAY-START and
-        ;; OBJECT-START return an empty list as a seed to serve as an
-        ;; accumulator.  Both OBJECT-END and ARRAY-END expect a list
-        ;; as argument.
-        (cons obj seed)))
+     ;; It is toplevel, a complete JSON value or structure was read,
+     ;; return it.
+     obj
+     ;; This is not toplevel, hence json-fold is called recursivly,
+     ;; to parse an array or object.  Both ARRAY-START and
+     ;; OBJECT-START return an empty list as a seed to serve as an
+     ;; accumulator.  Both OBJECT-END and ARRAY-END expect a list
+     ;; as argument.
+     (cons obj seed)))
 
-  (json-fold proc array-start array-end object-start object-end %root port-or-generator))
+  (let ((out (json-fold proc
+                        array-start
+                        array-end
+                        object-start
+                        object-end
+                        %root
+                        port-or-generator)))
+    (if (eq? out %root)
+        (eof-object)
+        out)))
 
 (define json-read
   (case-lambda

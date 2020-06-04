@@ -330,7 +330,7 @@
           n_-nan.0
           n_+nan.0
           n_exact_not_integer
-
+          y_json_lines
           )
 
   (import (scheme base))
@@ -1421,5 +1421,14 @@
 
     (define n_exact_not_integer
       (check-raise json-error? (obj->json-string 314/100)))
+
+    (define y_json_lines
+      (check '(1 2 3) (call-with-input-string "1\n2\n3\n"
+                        (lambda (port)
+                          (let loop ((obj (json-read port))
+                                     (out '()))
+                            (if (eof-object? obj)
+                                (reverse out)
+                                (loop (json-read port) (cons obj out))))))))
 
     ))
