@@ -330,7 +330,9 @@
           n_-nan.0
           n_+nan.0
           n_exact_not_integer
-          y_json_lines
+          y_json_lines_numbers
+          y_json_lines_arrays
+          y_json_lines_objects
           )
 
   (import (scheme base))
@@ -1422,7 +1424,7 @@
     (define n_exact_not_integer
       (check-raise json-error? (obj->json-string 314/100)))
 
-    (define y_json_lines
+    (define y_json_lines_numbers
       (check '(1 2 3) (call-with-input-string "1\n2\n3\n"
                         (lambda (port)
                           (let loop ((obj (json-read port))
@@ -1430,5 +1432,25 @@
                             (if (eof-object? obj)
                                 (reverse out)
                                 (loop (json-read port) (cons obj out))))))))
+
+    (define y_json_lines_arrays
+      (check '(#(1) #(2) #(3))
+             (call-with-input-string "[1]\n[2]\n[3]\n"
+                                     (lambda (port)
+                                       (let loop ((obj (json-read port))
+                                                  (out '()))
+                                         (if (eof-object? obj)
+                                             (reverse out)
+                                             (loop (json-read port) (cons obj out))))))))
+
+    (define y_json_lines_objects
+      (check '(((hello . "world")) ((true . #t)) ((magic . 42)))
+             (call-with-input-string "{\"hello\": \"world\"}\n{\"true\": true}\n{\"magic\": 42}"
+                                     (lambda (port)
+                                       (let loop ((obj (json-read port))
+                                                  (out '()))
+                                         (if (eof-object? obj)
+                                             (reverse out)
+                                             (loop (json-read port) (cons obj out))))))))
 
     ))
