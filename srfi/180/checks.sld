@@ -336,7 +336,7 @@
           character-limit
           nesting-limit
           parse-into-records
-          ;; y_foundationdb_status.json
+          y_foundationdb_status.json
           sample-crlf-line-separators.jsonl
           sample-no-eol-at-eof.jsonl
           sample.jsonl
