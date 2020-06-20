@@ -340,6 +340,9 @@
           sample-crlf-line-separators.jsonl
           sample-no-eol-at-eof.jsonl
           sample.jsonl
+          ;; json-sequence
+          json-sequence.log
+          json-sequence-with-one-broken-json.log
           )
 
   (import (scheme base))
@@ -1545,5 +1548,39 @@
       (check '(((a . 1)) ((b . 2)))
              (call-with-input-file "./files/sample-no-eol-at-eof.jsonl"
                (lambda (port) (generator->list (json-lines-read port))))))
+
+    ;; json-sequence.log was taken from:
+    ;;
+    ;;  https://raw.githubusercontent.com/hildjj/json-text-sequence/
+    ;;
+    ;; License is MIT:  Copyright (c) 2014 Joe Hildebrand
+    ;;
+    (define json-sequence.log
+      (check '(((d . "2014-09-22T22:11:26.315Z") (count . 0))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 1))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 2))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 3))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 4))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 5))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 6))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 7))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 8))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 9)))
+             (call-with-input-file "./files/json-sequence.log"
+               (lambda (port) (generator->list (json-sequence-read port))))))
+
+    (define json-sequence-with-one-broken-json.log
+      (check '(((d . "2014-09-22T22:11:26.315Z") (count . 0))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 1))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 2))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 3))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 4))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 5))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 6))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 7))
+               ;; ((d . "2014-09-22T22:11:26.317Z") (count . 8))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 9)))
+             (call-with-input-file "./files/json-sequence-with-one-broken-json.log"
+               (lambda (port) (generator->list (json-sequence-read port))))))
 
     ))

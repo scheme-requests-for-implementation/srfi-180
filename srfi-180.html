@@ -219,7 +219,11 @@
 
         <h3 id="json-lines-read-port-or-generator"><code>(json-lines-read [port-or-generator]) → generator</code></h3>
 
-        <p>JSON reader of <a href="http://jsonlines.org/">jsonlines</a> or <a href="http://ndjson.org/">ndjson</a>. As first and only argument, it takes a generator of characters or a textual input port.  Its value is the value returned <code>current-input-port</code>. It will return a generator of scheme objects as specified in <code>json-fread</code>.</p>
+        <p>JSON reader of <a href="http://jsonlines.org/">jsonlines</a> or <a href="http://ndjson.org/">ndjson</a>. As first and only argument, it takes a generator of characters or a textual input port.  Its default value is the value returned by <code>current-input-port</code>. It will return a generator of scheme objects as specified in <code>json-read</code>.</p>
+
+        <h3 id="json-sequence-read-port-or-generator"><code>(json-sequence-read [port-or-generator]) → generator</code></h3>
+
+        <p>JSON reader of <a href="https://tools.ietf.org/html/rfc7464">JSON) Text Sequences (RFC7464)</a>. As first and only argument, it takes a generator of characters or a textual input port.  Its default value is the value returned by <code>current-input-port</code>. It will return a generator of scheme objects as specified in <code>json-read</code>.</p>
 
         <h3 id="json-accumulator-port-or-generator"><code>(json-accumulator port-or-accumulator) → procedure</code></h3>
         <p>Streaming event-based JSON writer.  <code>PORT-OR-ACCUMULATOR</code> must be a textual output port, or an accumulator that accepts characters and strings.  It returns an accumulator procedure that accept scheme objects as first and only argument that follows the same protocol as described in <code>json-generator</code>.  Any deviation from the protocol must raise an error that statisfies <code>json-error?</code>.  In particular, objects and arrays must be properly nested.</p>

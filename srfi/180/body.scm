@@ -19,7 +19,9 @@
     ((#\x20 ; Space
       #\x09 ; Horizontal tab
       #\x0A ; Line feed or New line
-      #\x0D)
+      #\x0D
+      #\x1E  ;; Record Separator
+      )
      #t)
     (else #f)))
 
@@ -509,6 +511,17 @@
     ((port-or-generator)
      (lambda ()
        (json-read port-or-generator)))))
+
+;; json-sequence-read
+
+(define json-sequence-read
+  (case-lambda
+    (() (json-sequence-read (current-input-port)))
+    ((port-or-generator)
+     (lambda ()
+       (let loop ()
+         (guard (ex ((json-error? ex) (loop)))
+           (json-read port-or-generator)))))))
 
 ;; write procedures
 

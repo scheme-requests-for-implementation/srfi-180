@@ -9,6 +9,7 @@
           json-generator
           json-read
           json-lines-read
+          json-sequence-read
           json-accumulator
           json-write)
 
