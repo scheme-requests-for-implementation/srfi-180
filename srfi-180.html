@@ -79,7 +79,7 @@
         <p>The default value of <code>json-nesting-depth-limit</code> is <code>+inf.0</code>.</p>
         <p>A proper value should be set on per application basis to mitigate the risks of Denial-Of-Service attacks</p>
 
-        <h3 id="json-generator-tokens-generator"><code>(json-generator [port]) → generator</code></h3>
+        <h3 id="json-generator-port"><code>(json-generator [port]) → generator</code></h3>
         <p>Streaming event-based JSON reader.  <code>PORT</code> default value is the value returned by <code>current-input-port</code>.  It must be a textual input port.  <code>json-generator</code> returns a generator scheme objects:</p>
         <ul>
             <li><p><code>'array-start</code> symbol denoting that an array should be constructed.</p></li>
@@ -95,13 +95,13 @@
         </ul>
         <p>In the case where nesting of arrays or objects reaches the value returned by the parameter <code>json-nesting-depth-limit</code>, it must raise an object that satisfies the predicate <code>json-error?</code></p>
         <p>In cases where the JSON is invalid, the generator returned by <code>json-generator</code> should raise an object that satisfies the predicate <code>json-error?</code>.</p>
-        <p>Otherwise, if <code>TOKENS</code> describes valid JSON text, the generator returned by <code>json-generator</code> must yield an end-of-file object in two situations:</p>
+        <p>Otherwise, if <code>PORT</code> contains valid JSON text, the generator returned by <code>json-generator</code> must yield an end-of-file object in two situations:</p>
         <ul>
             <li>The first time <code>TOKENS</code> is called, it returns an object that is a boolean, a number, a string or the symbol <code>'null</code>.</li>
             <li>The first time <code>TOKENS</code> is called, it returns a symbol that is not the symbol <code>'null</code>.  When the underlying JSON text is valid, it should be the symbol starting a structure: <code>'object-start</code> or <code>'array-start</code>, then end-of-file object is generated when that structure is finished.</li>
         </ul>
 
-        <p>In other words, the generator returned by <code>json-generator</code> will parse at most one JSON value or one top-level structure.  If <code>TOKENS</code> is not finished, as in the case of <a href="http://jsonlines.org/">JSON lines</a>, the user should call <code>json-generator</code> again with the same <code>TOKENS</code>.</p>
+        <p>In other words, the generator returned by <code>json-generator</code> will parse at most one JSON value or one top-level structure.  If <code>PORT</code> is not finished, as in the case of <a href="http://jsonlines.org/">JSON lines</a>, the user should call <code>json-generator</code> again with the same <code>PORT</code>.</p>
 
         <!-- TODO: add examples -->
 
@@ -112,22 +112,22 @@
         default value.  <code>json-fold</code> will call the procedures passed as argument:</p>
         <ul>
             <li>
-                <code>(PROC obj seed)</code> is called when a JSON value is generated or a complete JSON structure was read.  In the case of a JSON value, an event-type <code>'json-value</code> was generated, and <code>OBJ</code> is the <code>cdr</code> of the event.  In the case of a JSON structure, array or object, <code>OBJ</code> is the value returned respectively by <code>ARRAY-END</code> or <code>OBJECT-END</code>.  <code>PROC</code> should return the new seed, that will be used to iterate over the rest of the generator.  Termination is described below.
+                <code>(PROC obj seed)</code> is called when a JSON value is generated or a complete JSON structure was read.  <code>PROC</code> should return the new seed, that will be used to iterate over the rest of the generator.  Termination is described below.
             </li>
             <li>
                 <code>(OBJECT-START seed)</code> is called with a seed and should return a seed that will be used as the seed of the iteration over the key and values of that object.
             </li>
             <li>
-                <code>(OBJECT-END seed)</code> is called with a seed and should return a new seed that is the result of the iteration over an object.
+                <code>(OBJECT-END seed)</code> is called with a seed and should return a new seed that is the result of the iteration over a JSON object.
             </li>
         </ul>
-        <p><code>ARRAY-START</code> and <code>ARRAY-END</code> take the same arguments, but are called for iterating on JSON arrays.</p>
+        <p><code>ARRAY-START</code> and <code>ARRAY-END</code> take the same arguments, and similar behavior, but are called for iterating on JSON arrays.</p>
         <p><code>json-fold</code> must return the seed when:</p>
         <ul>
-            <li><code>EVENTS</code> yields an object that satisfies the predicate <code>eof-object?</code></li>
+            <li><code>PORT-OR-GENERATOR</code> yields an object that satisfies the predicate <code>eof-object?</code></li>
             <li>All structures, array or object, that were started have ended.  The returned object is <code>(PROC obj SEED)</code> where <code>obj</code> is the object returned by <code>ARRAY-END</code> or <code>OBJECT-END</code></li>
         </ul>
-        <p>The behavior of <code>json-fold</code> is only specified when <code>EVENTS</code> follows the <code>json-generator</code> protocol.  <code>json-fold</code> may check that <code>EVENTS</code> respects the <code>json-generator</code> protocol.  In that case, if the protocol is not respected, <code>json-fold</code> must raise a <code>json-error?</code>.</p>
+        <p>The behavior of <code>json-fold</code> is only specified when <code>PORT-OR-GENERATOR</code> follows the <code>json-generator</code> protocol.</p>
         <p>Otherwise, the behavior of <code>json-fold</code> is unspecified.</p>
 
         <h4 id="json-fold-example">Example</h4>
@@ -136,6 +136,7 @@
 
         <div>
             <pre>
+
 (define (%json-read port-or-generator)
 
   (define %root '(root))
@@ -165,26 +166,35 @@
   (define object-end plist->alist)
 
   (define (proc obj seed)
-    ;; PROC is called when a JSON value or structure was completely
+    ;; proc is called when a JSON value or structure was completly
     ;; read.  The parse result is passed as OBJ.  In the case where
-    ;; what is parsed is a JSON value then OBJ is simply the token
-    ;; that is read that can be 'null, a number or a string.
-    ;; In the case where what is parsed is a JSON structure,
-    ;; OBJ is what is returned by OBJECT-END or ARRAY-END.
-
+    ;; what is parsed is a JSON simple json value then OBJ is simply
+    ;; the token that is read that can be 'null, a number or a string.
+    ;; In the case where what is parsed is a JSON structure, OBJ is
+    ;; what is returned by OBJECT-END or ARRAY-END.
     (if (eq? seed %root)
-        ;; It is toplevel, a complete JSON value or structure was
-        ;; read, return it.
-        obj
-        ;; This is NOT toplevel, hence json-fold is called recursively,
-        ;; to parse an array or object.  Both ARRAY-START and
-        ;; OBJECT-START return an empty list as a seed to serve as an
-        ;; accumulator.  Both OBJECT-END and ARRAY-END expect a list
-        ;; as argument.
-        (cons obj seed)))
+     ;; It is toplevel, a complete JSON value or structure was read,
+     ;; return it.
+     obj
+     ;; This is not toplevel, hence json-fold is called recursivly,
+     ;; to parse an array or object.  Both ARRAY-START and
+     ;; OBJECT-START return an empty list as a seed to serve as an
+     ;; accumulator.  Both OBJECT-END and ARRAY-END expect a list
+     ;; as argument.
+     (cons obj seed)))
 
-  (json-fold proc array-start array-end object-start object-end %root port-or-generator))
-            </pre>
+  (let ((out (json-fold proc
+                        array-start
+                        array-end
+                        object-start
+                        object-end
+                        %root
+                        port-or-generator)))
+    ;; if out is the root object, then the port or generator is empty.
+    (if (eq? out %root)
+        (eof-object)
+        out)))
+</pre>
         </div>
 
         <h3 id="json-read-port-or-generator-object"><code>(json-read [port-or-generator]) → object</code></h3>
@@ -203,7 +213,7 @@
         <p>In the case where nesting of arrays or objects reaches the value returned by the parameter <code>json-nesting-depth-limit</code>, <code>json-read</code> must raise an object that satisfies the predicate <code>json-error?</code></p>
 
         <h3 id="json-accumulator-port-or-generator"><code>(json-accumulator port-or-accumulator) → procedure</code></h3>
-        <p>Streaming event-based JSON writer.  <code>PORT-OR-ACCUMULATOR</code> must be a textual output port, or an accumulator that accepts characters and strings.  It returns an accumulator procedure that accept events as first and only argument that follows the same protocol as described in <code>json-generator</code>.  Any deviation from the protocol must raise an error that statisfies <code>json-error?</code>.  In particular, objects and arrays must be properly nested.</p>
+        <p>Streaming event-based JSON writer.  <code>PORT-OR-ACCUMULATOR</code> must be a textual output port, or an accumulator that accepts characters and strings.  It returns an accumulator procedure that accept scheme objects as first and only argument that follows the same protocol as described in <code>json-generator</code>.  Any deviation from the protocol must raise an error that statisfies <code>json-error?</code>.  In particular, objects and arrays must be properly nested.</p>
         <p>Mind the fact that most JSON parsers have a nesting limit
         that is not documented by the standard. Even if you can
         produce with this library arbitrarly nested JSON, you might
@@ -221,7 +231,7 @@
             <li>vector</li>
             <li>association list with keys as symbols</li>
         </ul>
-
+x
         <h2 id="implementation">Implementation</h2>
         <p>The sample implementation is available in <a href="https://github.com/scheme-requests-for-implementation/srfi-180">this Git repo</a>.
         </p>

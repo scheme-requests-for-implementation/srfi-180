@@ -467,6 +467,7 @@
                         object-end
                         %root
                         port-or-generator)))
+    ;; if out is the root object, then the port or generator is empty.
     (if (eq? out %root)
         (eof-object)
         out)))
