@@ -501,6 +501,15 @@
     (() (json-read (current-input-port)))
     ((port-or-generator) (%json-read port-or-generator))))
 
+;; json-lines-read
+
+(define json-lines-read
+  (case-lambda
+    (() (json-lines-read (current-input-port)))
+    ((port-or-generator)
+     (lambda ()
+       (json-read port-or-generator)))))
+
 ;; write procedures
 
 (define (json-accumulator accumulator)

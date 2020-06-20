@@ -8,6 +8,7 @@
           json-fold
           json-generator
           json-read
+          json-lines-read
           json-accumulator
           json-write)
 

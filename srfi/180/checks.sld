@@ -336,13 +336,17 @@
           character-limit
           nesting-limit
           parse-into-records
-          y_foundationdb_status.json
+          ;; y_foundationdb_status.json
+          sample-crlf-line-separators.jsonl
+          sample-no-eol-at-eof.jsonl
+          sample.jsonl
           )
 
   (import (scheme base))
   (import (scheme read))
   (import (scheme file))
   (import (srfi 180))
+  (import (scheme generator))
   (import (check))
 
   (begin
@@ -1522,5 +1526,24 @@
     (define y_foundationdb_status.json
       (check y_foundationdb_status.scm (parse "./files/y_foundationdb_status.json")))
 
+    ;; sample .jsonl extracted from python-jsonlines that is Copyright
+    ;; © 2016, Wouter Bolsterlee, 3-clause "New BSD License" see:
+    ;;
+    ;;   https://github.com/wbolster/jsonlines/
+    ;;
+    (define sample-crlf-line-separators.jsonl
+      (check '(((a . 1)) ((b . 2)))
+             (call-with-input-file "./files/sample-crlf-line-separators.jsonl"
+               (lambda (port) (generator->list (json-lines-read port))))))
+
+    (define sample.jsonl
+      (check '(((a . 1)) ((b . 2)))
+             (call-with-input-file "./files/sample.jsonl"
+               (lambda (port) (generator->list (json-lines-read port))))))
+
+    (define sample-no-eol-at-eof.jsonl
+      (check '(((a . 1)) ((b . 2)))
+             (call-with-input-file "./files/sample-no-eol-at-eof.jsonl"
+               (lambda (port) (generator->list (json-lines-read port))))))
 
     ))
