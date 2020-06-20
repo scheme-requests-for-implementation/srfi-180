@@ -336,9 +336,11 @@
           character-limit
           nesting-limit
           parse-into-records
+          y_foundationdb_status.json
           )
 
   (import (scheme base))
+  (import (scheme read))
   (import (scheme file))
   (import (srfi 180))
   (import (check))
@@ -1514,6 +1516,11 @@
 {\"magic\": 2006}
 ]" json-magic))))
 
+    (define y_foundationdb_status.scm
+      (call-with-input-file "./files/y_foundationdb_status.scm" read))
+
+    (define y_foundationdb_status.json
+      (check y_foundationdb_status.scm (parse "./files/y_foundationdb_status.json")))
 
 
     ))
