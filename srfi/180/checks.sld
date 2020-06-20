@@ -335,6 +335,7 @@
           y_json_lines_objects
           character-limit
           nesting-limit
+          parse-into-records
           )
 
   (import (scheme base))
@@ -1464,5 +1465,55 @@
       (check-raise json-error?
                    (parameterize ((json-nesting-depth-limit 1))
                      (json-string->obj "[[3.14159]]"))))
+
+    ;; parse json into records
+
+    (define-record-type <magic>
+      (make-magic number)
+      magic?
+      (number magic-number))
+
+    (define (json-magic port)
+      (define %root '(root))
+
+      (define (array-start seed) '())
+
+      (define (array-end items)
+        (list->vector (reverse items)))
+
+      (define (object-start seed) '())
+
+      (define (plist->record plist)
+        (make-magic (car plist)))
+
+      (define object-end plist->record)
+
+      (define (proc obj seed)
+        (if (eq? seed %root)
+            obj
+            (cons obj seed)))
+
+      (let ((out (json-fold proc
+                            array-start
+                            array-end
+                            object-start
+                            object-end
+                            %root
+                            port)))
+        ;; if out is the root object, then the port or generator is empty.
+        (if (eq? out %root)
+            (eof-object)
+            out)))
+
+    (define parse-into-records
+      (check #(42 101 1337 2006)
+             (vector-map magic-number (call-with-input-string "[
+{\"magic\": 42},
+{\"magic\": 101},
+{\"magic\": 1337},
+{\"magic\": 2006}
+]" json-magic))))
+
+
 
     ))
