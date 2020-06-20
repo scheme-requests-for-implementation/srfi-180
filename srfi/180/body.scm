@@ -405,8 +405,8 @@
               (begin (k seed) #f)
               (case event
                 ;; termination cases
-                ((array-end) (k seed) #f)
-                ((object-end) (k seed) #f)
+                ((array-end) (k seed))
+                ((object-end) (k seed))
                 ;; recursion
                 ((array-start) (ruse (array-start seed)
                                      (lambda (out) (loop (proc (array-end out) seed)))))
@@ -423,7 +423,10 @@
   (define %unset '(unset))
 
   (let ((out %unset))
-    (make-trampoline-fold (lambda (out*) (set! out out*)))
+    (define (escape out*)
+      (set! out out*)
+      #f)
+    (make-trampoline-fold escape)
     (if (eq? out %unset)
         (error 'json "Is this JSON text")
         out)))
