@@ -68,37 +68,19 @@
         <p>The mapping between JSON types and Scheme objects is not trivial because a given mapping might not be the best for every situation.  That is the reason why this library make public the procedure <code>json-fold</code> inspired from Oleg Kiselyov's <code>foldts</code>.</p>
         <h2 id="specification">Specification</h2>
         <h3 id="json-error-obj-boolean"><code>(json-error? obj) → boolean</code></h3>
-        <p>Returns <code>#t</code> if <code>OBJ</code> is an error object that is specific to this library.  This exception can be raised during <code>json-stream-read</code>, <code>json-read</code> or <code>json-write</code>.</p>
+        <p>Returns <code>#t</code> if <code>OBJ</code> is an error object that is specific to this library.</p>
         <h3 id="json-error-reason-obj-string"><code>(json-error-reason obj) → string</code></h3>
         <p>Return a string explaining the reason for the error.  This should be human-readable.</p>
         <h3 id="json-null-obj-boolean"><code>(json-null? obj) → boolean</code></h3>
         <p>Return <code>#t</code> if <code>OBJ</code> is the scheme symbol <code>'null</code>, which represents the JSON <code>null</code> in Scheme.  In all other cases, return <code>#f</code>.</p>
-        <h3 id="json-tokens-port-or-generator-generator"><code>(json-tokens [port-or-generator])</code></h3>
-        <p><code>PORT-OR-GENERATOR</code> can be a textual input port or a generator of characters.  Its default value is the value returned by <code>current-input-port</code>.  <code>json-tokens</code> returns a generator of tokens as Scheme objects.  The returned generator can yield the following tokens:</p>
-        <ul>
-            <li>a boolean object</li>
-            <li>a string object</li>
-            <li>a number object</li>
-        </ul>
-        <p>Also, these symbols can be generated:</p>
-        <ul>
-            <li><code>'null</code> representing the JSON <code>null</code> value</li>
-            <li><code>'colon</code> representing a colon control character</li>
-            <li><code>'comma</code> representing the comma control character</li>
-            <li><code>'array-start</code> representing an open bracket</li>
-            <li><code>'array-end</code> representing a close bracket</li>
-            <li><code>'object-start</code> representing a curly open bracket</li>
-            <li><code>'object-end</code> representing a curly close bracket</li>
-        </ul>
-        <code>json-tokens</code> may raise an object that satisfies the predicate <code>json-error?</code>.
 
         <h3 id="json-nesting-depth-limit-parameter"><code>json-nesting-depth-limit</code> parameter</h3>
-        <p>Parameter holding a number that represents the maximum nesting depth of JSON text that can be read by <code>json-generator</code>, <code>json-fold</code>, and <code>json-read</code>.  If the value returned by this parameter is reached, the implementation must raise an error that satisfies <code>json-error?</code>.  This parameter does not apply to the procedure <code>json-tokens</code>.</p>
+        <p>Parameter holding a number that represents the maximum nesting depth of JSON text that can be read by <code>json-generator</code>, <code>json-fold</code>, and <code>json-read</code>.  If the value returned by this parameter is reached, the implementation must raise an error that satisfies <code>json-error?</code>.</p>
         <p>The default value of <code>json-nesting-depth-limit</code> is <code>+inf.0</code>.</p>
         <p>A proper value should be set on per application basis to mitigate the risks of Denial-Of-Service attacks</p>
 
-        <h3 id="json-generator-tokens-generator"><code>(json-generator [tokens]) → generator</code></h3>
-        <p>Streaming event-based JSON reader.  <code>TOKENS</code> is a generator of tokens such as returned by the procedure <code>json-tokens</code>.  <code>json-generator</code> returns a generator scheme objects:</p>
+        <h3 id="json-generator-tokens-generator"><code>(json-generator [port]) → generator</code></h3>
+        <p>Streaming event-based JSON reader.  <code>PORT</code> default value is the value returned by <code>current-input-port</code>.  It must be a textual input port.  <code>json-generator</code> returns a generator scheme objects:</p>
         <ul>
             <li><p><code>'array-start</code> symbol denoting that an array should be constructed.</p></li>
             <li><p><code>'array-end</code> symbol denoting that the construction of the array for which the last <code>'array-start</code> that was generated and not closed is finished.</p></li>
