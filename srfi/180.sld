@@ -1,6 +1,7 @@
 (define-library (srfi 180)
 
-  (export json-null?
+  (export json-number-of-character-limit
+          json-null?
           json-error?
           json-error-reason
           json-fold

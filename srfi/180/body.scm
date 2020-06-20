@@ -2,6 +2,8 @@
   (write args)(newline)
   (car (reverse args)))
 
+(define json-number-of-character-limit (make-parameter +inf.0))
+
 (define (json-null? obj)
   (eq? obj 'null))
 
@@ -28,9 +30,16 @@
     (raise (make-json-error "Unexpected character."))))
 
 (define (port->generator port)
-  (lambda ()
-    (guard (ex ((%read-error? ex) (raise (make-json-error "Read error!"))))
-      (read-char port))))
+  (let ((count 0)
+        (limit (json-number-of-character-limit)))
+    (lambda ()
+      (let ((out (guard (ex ((%read-error? ex) (raise (make-json-error "Read error!"))))
+                   (read-char port))))
+        (if (= count limit)
+            (raise (make-json-error "Maximum number of character reached."))
+            (begin
+              (set! count (+ count 1))
+              out))))))
 
 (define (gcons head generator)
   ;; returns a generator that will yield, HEAD the first time, and

@@ -333,6 +333,7 @@
           y_json_lines_numbers
           y_json_lines_arrays
           y_json_lines_objects
+          character-limit
           )
 
   (import (scheme base))
@@ -1453,4 +1454,8 @@
                                              (reverse out)
                                              (loop (json-read port) (cons obj out))))))))
 
+    (define character-limit
+      (check-raise json-error?
+                   (parameterize ((json-number-of-character-limit 1))
+                     (json-string->obj "3.14159"))))
     ))

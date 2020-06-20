@@ -79,6 +79,11 @@
         <p>The default value of <code>json-nesting-depth-limit</code> is <code>+inf.0</code>.</p>
         <p>A proper value should be set on per application basis to mitigate the risks of Denial-Of-Service attacks</p>
 
+        <h3 id="json-number-of-character-limit-parameter"><code>json-number-of-character-limit</code> parameter</h3>
+        <p>Parameter holding a number that represents the maximum number of characters for a given JSON text that can be read by <code>json-generator</code>, <code>json-fold</code>, and <code>json-read</code>.  If the value returned by this parameter is reached, the implementation must raise an error that satisfies <code>json-error?</code>.</p>
+        <p>The default value of <code>json-number-of-character-limit</code> is <code>+inf.0</code>.</p>
+        <p>A proper value should be set on per application basis to mitigate the risks of Denial-Of-Service attacks</p>
+
         <h3 id="json-generator-port"><code>(json-generator [port]) → generator</code></h3>
         <p>Streaming event-based JSON reader.  <code>PORT</code> default value is the value returned by <code>current-input-port</code>.  It must be a textual input port.  <code>json-generator</code> returns a generator scheme objects:</p>
         <ul>
