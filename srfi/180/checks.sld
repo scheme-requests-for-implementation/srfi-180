@@ -330,12 +330,26 @@
           n_-nan.0
           n_+nan.0
           n_exact_not_integer
-
+          y_json_lines_numbers
+          y_json_lines_arrays
+          y_json_lines_objects
+          character-limit
+          nesting-limit
+          parse-into-records
+          y_foundationdb_status.json
+          sample-crlf-line-separators.jsonl
+          sample-no-eol-at-eof.jsonl
+          sample.jsonl
+          ;; json-sequence
+          json-sequence.log
+          json-sequence-with-one-broken-json.log
           )
 
   (import (scheme base))
+  (import (scheme read))
   (import (scheme file))
   (import (srfi 180))
+  (import (scheme generator))
   (import (check))
 
   (begin
@@ -1421,5 +1435,152 @@
 
     (define n_exact_not_integer
       (check-raise json-error? (obj->json-string 314/100)))
+
+    (define y_json_lines_numbers
+      (check '(1 2 3) (call-with-input-string "1\n2\n3\n"
+                        (lambda (port)
+                          (let loop ((obj (json-read port))
+                                     (out '()))
+                            (if (eof-object? obj)
+                                (reverse out)
+                                (loop (json-read port) (cons obj out))))))))
+
+    (define y_json_lines_arrays
+      (check '(#(1) #(2) #(3))
+             (call-with-input-string "[1]\n[2]\n[3]\n"
+                                     (lambda (port)
+                                       (let loop ((obj (json-read port))
+                                                  (out '()))
+                                         (if (eof-object? obj)
+                                             (reverse out)
+                                             (loop (json-read port) (cons obj out))))))))
+
+    (define y_json_lines_objects
+      (check '(((hello . "world")) ((true . #t)) ((magic . 42)))
+             (call-with-input-string "{\"hello\": \"world\"}\n{\"true\": true}\n{\"magic\": 42}"
+                                     (lambda (port)
+                                       (let loop ((obj (json-read port))
+                                                  (out '()))
+                                         (if (eof-object? obj)
+                                             (reverse out)
+                                             (loop (json-read port) (cons obj out))))))))
+
+    (define character-limit
+      (check-raise json-error?
+                   (parameterize ((json-number-of-character-limit 1))
+                     (json-string->obj "3.14159"))))
+
+    (define nesting-limit
+      (check-raise json-error?
+                   (parameterize ((json-nesting-depth-limit 1))
+                     (json-string->obj "[[3.14159]]"))))
+
+    ;; parse json into records
+
+    (define-record-type <magic>
+      (make-magic number)
+      magic?
+      (number magic-number))
+
+    (define (json-magic port)
+      (define %root '(root))
+
+      (define (array-start seed) '())
+
+      (define (array-end items)
+        (list->vector (reverse items)))
+
+      (define (object-start seed) '())
+
+      (define (plist->record plist)
+        (make-magic (car plist)))
+
+      (define object-end plist->record)
+
+      (define (proc obj seed)
+        (if (eq? seed %root)
+            obj
+            (cons obj seed)))
+
+      (let ((out (json-fold proc
+                            array-start
+                            array-end
+                            object-start
+                            object-end
+                            %root
+                            port)))
+        ;; if out is the root object, then the port or generator is empty.
+        (if (eq? out %root)
+            (eof-object)
+            out)))
+
+    (define parse-into-records
+      (check #(42 101 1337 2006)
+             (vector-map magic-number (call-with-input-string "[
+{\"magic\": 42},
+{\"magic\": 101},
+{\"magic\": 1337},
+{\"magic\": 2006}
+]" json-magic))))
+
+    (define y_foundationdb_status.scm
+      (call-with-input-file "./files/y_foundationdb_status.scm" read))
+
+    (define y_foundationdb_status.json
+      (check y_foundationdb_status.scm (parse "./files/y_foundationdb_status.json")))
+
+    ;; sample .jsonl extracted from python-jsonlines that is Copyright
+    ;; © 2016, Wouter Bolsterlee, 3-clause "New BSD License" see:
+    ;;
+    ;;   https://github.com/wbolster/jsonlines/
+    ;;
+    (define sample-crlf-line-separators.jsonl
+      (check '(((a . 1)) ((b . 2)))
+             (call-with-input-file "./files/sample-crlf-line-separators.jsonl"
+               (lambda (port) (generator->list (json-lines-read port))))))
+
+    (define sample.jsonl
+      (check '(((a . 1)) ((b . 2)))
+             (call-with-input-file "./files/sample.jsonl"
+               (lambda (port) (generator->list (json-lines-read port))))))
+
+    (define sample-no-eol-at-eof.jsonl
+      (check '(((a . 1)) ((b . 2)))
+             (call-with-input-file "./files/sample-no-eol-at-eof.jsonl"
+               (lambda (port) (generator->list (json-lines-read port))))))
+
+    ;; json-sequence.log was taken from:
+    ;;
+    ;;  https://raw.githubusercontent.com/hildjj/json-text-sequence/
+    ;;
+    ;; License is MIT:  Copyright (c) 2014 Joe Hildebrand
+    ;;
+    (define json-sequence.log
+      (check '(((d . "2014-09-22T22:11:26.315Z") (count . 0))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 1))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 2))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 3))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 4))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 5))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 6))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 7))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 8))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 9)))
+             (call-with-input-file "./files/json-sequence.log"
+               (lambda (port) (generator->list (json-sequence-read port))))))
+
+    (define json-sequence-with-one-broken-json.log
+      (check '(((d . "2014-09-22T22:11:26.315Z") (count . 0))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 1))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 2))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 3))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 4))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 5))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 6))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 7))
+               ;; ((d . "2014-09-22T22:11:26.317Z") (count . 8))
+               ((d . "2014-09-22T22:11:26.317Z") (count . 9)))
+             (call-with-input-file "./files/json-sequence-with-one-broken-json.log"
+               (lambda (port) (generator->list (json-sequence-read port))))))
 
     ))
