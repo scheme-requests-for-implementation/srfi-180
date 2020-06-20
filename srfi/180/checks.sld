@@ -334,6 +334,7 @@
           y_json_lines_arrays
           y_json_lines_objects
           character-limit
+          nesting-limit
           )
 
   (import (scheme base))
@@ -1458,4 +1459,10 @@
       (check-raise json-error?
                    (parameterize ((json-number-of-character-limit 1))
                      (json-string->obj "3.14159"))))
+
+    (define nesting-limit
+      (check-raise json-error?
+                   (parameterize ((json-nesting-depth-limit 1))
+                     (json-string->obj "[[3.14159]]"))))
+
     ))

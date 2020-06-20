@@ -1,6 +1,7 @@
 (define-library (srfi 180)
 
   (export json-number-of-character-limit
+          json-nesting-depth-limit
           json-null?
           json-error?
           json-error-reason

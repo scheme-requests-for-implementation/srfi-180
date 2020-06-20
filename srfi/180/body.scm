@@ -4,6 +4,8 @@
 
 (define json-number-of-character-limit (make-parameter +inf.0))
 
+(define json-nesting-depth-limit (make-parameter +inf.0))
+
 (define (json-null? obj)
   (eq? obj 'null))
 
@@ -236,6 +238,14 @@
 
 (define (%json-generator tokens)
 
+  (define limit (json-nesting-depth-limit))
+  (define count 0)
+
+  (define (handle-limit!)
+    (if (= count limit)
+        (raise (make-json-error "Maximum JSON nesting depth reached"))
+        (set! count (+ count 1))))
+
   (define (array-maybe-continue tokens k)
     (lambda ()
       (let ((token (tokens)))
@@ -246,6 +256,7 @@
 
   (define (array-start tokens k)
     (lambda ()
+      (handle-limit!)
       (let ((token (tokens)))
         (if (eq? token 'array-end)
             (values 'array-end k)
@@ -275,6 +286,7 @@
 
   (define (object-start tokens k)
     (lambda ()
+      (handle-limit!)
       (let ((token (tokens)))
         (cond
          ((eq? token 'object-end) (values 'object-end k))
