@@ -343,6 +343,9 @@
           ;; json-sequence
           json-sequence.log
           json-sequence-with-one-broken-json.log
+          ;; others
+          json-generator-single-top-level-value
+          json-generator-single-top-level-value-structure
           )
 
   (import (scheme base))
@@ -1582,5 +1585,15 @@
                ((d . "2014-09-22T22:11:26.317Z") (count . 9)))
              (call-with-input-file "./files/json-sequence-with-one-broken-json.log"
                (lambda (port) (generator->list (json-sequence-read port))))))
+
+    (define json-generator-single-top-level-value
+      (check
+        (call-with-input-string "42 101 1337" (lambda (port) (generator->list (json-generator port))))
+        '(42)))
+
+    (define json-generator-single-top-level-value-structure
+      (check
+        (call-with-input-string "[42] 101 1337" (lambda (port) (generator->list (json-generator port))))
+        '(array-start 42 array-end)))
 
     ))

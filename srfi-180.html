@@ -102,14 +102,25 @@
         <p>In cases where the JSON is invalid, the generator returned by <code>json-generator</code> should raise an object that satisfies the predicate <code>json-error?</code>.</p>
         <p>Otherwise, if <code>PORT</code> contains valid JSON text, the generator returned by <code>json-generator</code> must yield an end-of-file object in two situations:</p>
         <ul>
-            <li>The first time <code>TOKENS</code> is called, it returns an object that is a boolean, a number, a string or the symbol <code>'null</code>.</li>
-            <li>The first time <code>TOKENS</code> is called, it returns a symbol that is not the symbol <code>'null</code>.  When the underlying JSON text is valid, it should be the symbol starting a structure: <code>'object-start</code> or <code>'array-start</code>.  The end-of-file object is generated when that structure is finished.</li>
+            <li>The first time the generator returned by <code>json-generator</code> is called, it returns an object that is a boolean, a number, a string or the symbol <code>'null</code>.</li>
+            <li>The first time the generator returned by <code>json-generator</code> is called, it returns a symbol that is not the symbol <code>'null</code>.  When the underlying JSON text is valid, it should be the symbol starting a structure: <code>'object-start</code> or <code>'array-start</code>.  The end-of-file object is generated when that structure is finished.</li>
         </ul>
 
         <p>In other words, the generator returned by <code>json-generator</code> will parse at most one JSON value or one top-level structure.  If <code>PORT</code> is not finished, as in the case of <a href="http://jsonlines.org/">JSON lines</a>, the user should call <code>json-generator</code> again with the same <code>PORT</code>.</p>
 
-        <!-- TODO: add examples -->
+        <h4>Examples</h4>
 
+        <pre>(assume
+  (equal?
+    (call-with-input-string "42 101 1337" (lambda (port) (generator->list (json-generator port))))
+    '(42)))</pre>
+
+        <pre>(assume
+  (equal?
+    (call-with-input-string "[42] 101 1337" (lambda (port) (generator->list (json-generator port))))
+    '(array-start 42 array-end)))</pre>
+
+        </pre>
         <h3 id="json-fold"><code>(json-fold proc array-start array-end object-start object-end seed [port-or-generator])</code></h3>
         <p>Fundamental JSON iterator.</p>
 
