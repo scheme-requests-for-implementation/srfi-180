@@ -1,16 +1,15 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html lang="en">
     <head>
-        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-        <meta http-equiv="Content-Style-Type" content="text/css" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link href="/favicon.png" rel="icon" sizes="192x192" type="image/png" />
-        <meta name="generator" content="pandoc" />
-        <title>JSON</title>
-        <link rel="stylesheet" href="/srfi.css" type="text/css" />
-        <style type="text/css">code{white-space: pre;}</style>
-        <style type="text/css">
-         div.sourceCode { overflow-x: auto; }
+        <meta charset="utf-8">
+        <title>SRFI 180: JSON</title>
+        <link href="/favicon.png" rel="icon" sizes="192x192" type="image/png">
+	<link rel="stylesheet" href="/srfi.css" type="text/css">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="generator" content="pandoc">
+        <style>
+         code{white-space: pre;}
+	 div.sourceCode { overflow-x: auto; }
          table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
              margin: 0; padding: 0; vertical-align: baseline; border: none; }
          table.sourceCode { width: 100%; line-height: 100%; }
@@ -48,10 +47,8 @@
         </style>
     </head>
     <body>
-        <h1 id="title">Title</h1>
-        <p>JSON</p>
-        <h2 id="author">Author</h2>
-        <p>Amirouche Boubekki</p>
+        <h1 id="title"><a href="https://srfi.schemers.org/"><img class="srfi-logo" src="https://srfi.schemers.org/srfi-logo.svg" alt="SRFI logo" /></a>180: JSON</h1>
+        <p id="author">by Amirouche Boubekki</p>
         <h2 id="status">Status</h2>
         <p>This SRFI is currently in <em>draft</em> status.  Here is <a href="https://srfi.schemers.org/srfi-process.html">an explanation</a> of each status that a SRFI can hold.  To provide input on this SRFI, please send email to <code><a href="mailto:srfi+minus+180+at+srfi+dotschemers+dot+org">srfi-180@<span class="antispam">nospam</span>srfi.schemers.org</a></code>.  To subscribe to the list, follow <a href="https://srfi.schemers.org/srfi-list-subscribe.html">these instructions</a>.  You can access previous messages via the mailing list <a href="https://srfi-email.schemers.org/srfi-180">archive</a>.</p>
         <ul>
@@ -121,7 +118,6 @@
     (call-with-input-string "[42] 101 1337" (lambda (port) (generator->list (json-generator port))))
     '(array-start 42 array-end)))</pre>
 
-        </pre>
         <h3 id="json-fold"><code>(json-fold proc array-start array-end object-start object-end seed [port-or-generator])</code></h3>
         <p>Fundamental JSON iterator.</p>
 
