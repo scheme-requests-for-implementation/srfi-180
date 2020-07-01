@@ -70,20 +70,20 @@
         <h3 id="json-error-reason-obj-string"><code>(json-error-reason obj) → string</code></h3>
         <p>Return a string explaining the reason for the error.  This should be human-readable.</p>
         <h3 id="json-null-obj-boolean"><code>(json-null? obj) → boolean</code></h3>
-        <p>Return <code>#t</code> if <code>OBJ</code> is the scheme symbol <code>'null</code>, which represents the JSON <code>null</code> in Scheme.  In all other cases, return <code>#f</code>.</p>
+        <p>Return <code>#t</code> if <code>OBJ</code> is the Scheme symbol <code>'null</code>, which represents the JSON <code>null</code> in Scheme.  In all other cases, return <code>#f</code>.</p>
 
         <h3 id="json-nesting-depth-limit-parameter"><code>json-nesting-depth-limit</code> parameter</h3>
         <p>Parameter holding a number that represents the maximum nesting depth of JSON text that can be read by <code>json-generator</code>, <code>json-fold</code>, and <code>json-read</code>.  If the value returned by this parameter is reached, the implementation must raise an error that satisfies <code>json-error?</code>.</p>
         <p>The default value of <code>json-nesting-depth-limit</code> is <code>+inf.0</code>.</p>
-        <p>A proper value should be set on a per application basis to mitigate the risks of denial-of-service attacks.</p>
+        <p>A proper value should be set on a per-application basis to mitigate the risks of denial-of-service attacks.</p>
 
         <h3 id="json-number-of-character-limit-parameter"><code>json-number-of-character-limit</code> parameter</h3>
         <p>Parameter holding a number that represents the maximum number of characters for a given JSON text that can be read by <code>json-generator</code>, <code>json-fold</code>, and <code>json-read</code>.  If the value returned by this parameter is reached, the implementation must raise an error that satisfies <code>json-error?</code>.</p>
         <p>The default value of <code>json-number-of-character-limit</code> is <code>+inf.0</code>.</p>
-        <p>A proper value should be set on a per application basis to mitigate the risks of denial-of-service attacks.</p>
+        <p>A proper value should be set on a per-application basis to mitigate the risks of denial-of-service attacks.</p>
 
         <h3 id="json-generator-port"><code>(json-generator [port]) → generator</code></h3>
-        <p>Streaming event-based JSON reader.  <code>PORT</code> default value is the value returned by <code>current-input-port</code>.  It must be a textual input port.  <code>json-generator</code> returns a generator of scheme objects, each of which must be one of:</p>
+        <p>Streaming event-based JSON reader.  <code>PORT</code> default value is the value returned by <code>current-input-port</code>.  It must be a textual input port.  <code>json-generator</code> returns a generator of Scheme objects, each of which must be one of:</p>
         <ul>
             <li><p><code>'array-start</code> symbol denoting that an array should be constructed.</p></li>
             <li><p><code>'array-end</code> symbol denoting that the construction of the array for which the last <code>'array-start</code> was generated and not closed is finished.</p></li>
@@ -168,8 +168,8 @@
     '())
 
   (define (plist->alist plist)
-    ;; PLIST is a list of even items, otherwise json-generator
-    ;; would have raised a json-error.
+    ;; PLIST is a list of an even number of items.  Otherwise,
+    ;; json-generator would have raised a json-error.
     (let loop ((plist plist)
                (out '()))
       (if (null? plist)
@@ -186,15 +186,15 @@
     ;; In the case where what is parsed is a JSON structure, OBJ is
     ;; what is returned by OBJECT-END or ARRAY-END.
     (if (eq? seed %root)
-     ;; This is toplevel.  A complete JSON value or structure was read,
-     ;; so return it.
-     obj
-     ;; This is not toplevel, hence json-fold is called recursively
-     ;; to parse an array or object.  Both ARRAY-START and
-     ;; OBJECT-START return an empty list as a seed to serve as an
-     ;; accumulator.  Both OBJECT-END and ARRAY-END expect a list
-     ;; as argument.
-     (cons obj seed)))
+        ;; This is toplevel.  A complete JSON value or structure was
+        ;; read, so return it.
+        obj
+        ;; This is not toplevel, hence json-fold is called recursively
+        ;; to parse an array or object.  Both ARRAY-START and
+        ;; OBJECT-START return an empty list as a seed to serve as an
+        ;; accumulator.  Both OBJECT-END and ARRAY-END expect a list
+        ;; as argument.
+        (cons obj seed)))
 
   (let ((out (json-fold proc
                         array-start
@@ -227,14 +227,14 @@
 
         <h3 id="json-lines-read-port-or-generator"><code>(json-lines-read [port-or-generator]) → generator</code></h3>
 
-        <p>JSON reader of <a href="http://jsonlines.org/">jsonlines</a> or <a href="http://ndjson.org/">ndjson</a>. As its first and only argument, it takes a generator of characters or a textual input port whose default value is the value returned by <code>current-input-port</code>. It will return a generator of scheme objects as specified in <code>json-read</code>.</p>
+        <p>JSON reader of <a href="http://jsonlines.org/">jsonlines</a> or <a href="http://ndjson.org/">ndjson</a>. As its first and only argument, it takes a generator of characters or a textual input port whose default value is the value returned by <code>current-input-port</code>. It will return a generator of Scheme objects as specified in <code>json-read</code>.</p>
 
         <h3 id="json-sequence-read-port-or-generator"><code>(json-sequence-read [port-or-generator]) → generator</code></h3>
 
-        <p>JSON reader of <a href="https://tools.ietf.org/html/rfc7464">JSON Text Sequences (RFC 7464)</a>. As its first and only argument, it takes a generator of characters or a textual input port whose default value is the value returned by <code>current-input-port</code>. It will return a generator of scheme objects as specified in <code>json-read</code>.</p>
+        <p>JSON reader of <a href="https://tools.ietf.org/html/rfc7464">JSON Text Sequences (RFC 7464)</a>. As its first and only argument, it takes a generator of characters or a textual input port whose default value is the value returned by <code>current-input-port</code>. It will return a generator of Scheme objects as specified in <code>json-read</code>.</p>
 
         <h3 id="json-accumulator-port-or-generator"><code>(json-accumulator port-or-accumulator) → procedure</code></h3>
-        <p>Streaming event-based JSON writer.  <code>PORT-OR-ACCUMULATOR</code> must be a textual output port or an accumulator that accepts characters and strings.  It returns an accumulator procedure that accept scheme objects as its first and only argument and that follows the same protocol as described in <code>json-generator</code>.  Any deviation from the protocol must raise an error that satisfies <code>json-error?</code>.  In particular, objects and arrays must be properly nested.</p>
+        <p>Streaming event-based JSON writer.  <code>PORT-OR-ACCUMULATOR</code> must be a textual output port or an accumulator that accepts characters and strings.  It returns an accumulator procedure that accepts Scheme objects as its first and only argument and that follows the same protocol as described in <code>json-generator</code>.  Any deviation from the protocol must raise an error that satisfies <code>json-error?</code>.  In particular, objects and arrays must be properly nested.</p>
         <p>Mind the fact that most JSON parsers have a nesting limit
         that is not documented by the standard. Even if you can
         produce arbitrarily nested JSON with this library, you might
