@@ -140,8 +140,6 @@
             <li><code>PORT-OR-GENERATOR</code> yields an object that satisfies the predicate <code>eof-object?</code></li>
             <li>All structures, array or object, that were started have ended.  The returned object is <code>(PROC obj SEED)</code> where <code>obj</code> is the object returned by <code>ARRAY-END</code> or <code>OBJECT-END</code></li>
         </ul>
-        <p>The behavior of <code>json-fold</code> is only specified when <code>PORT-OR-GENERATOR</code> follows the <code>json-generator</code> protocol.</p>
-        <p>Otherwise, the behavior of <code>json-fold</code> is unspecified.</p>
 
         <h4 id="json-fold-example">Example</h4>
 
