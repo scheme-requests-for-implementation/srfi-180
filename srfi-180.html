@@ -82,8 +82,8 @@
         <p>The default value of <code>json-number-of-character-limit</code> is <code>+inf.0</code>.</p>
         <p>A proper value should be set on a per-application basis to mitigate the risks of denial-of-service attacks.</p>
 
-        <h3 id="json-generator-port"><code>(json-generator [port]) → generator</code></h3>
-        <p>Streaming event-based JSON reader.  <code>PORT</code> default value is the value returned by <code>current-input-port</code>.  It must be a textual input port.  <code>json-generator</code> returns a generator of Scheme objects, each of which must be one of:</p>
+        <h3 id="json-generator"><code>(json-generator [port-or-generator]) → generator</code></h3>
+        <p>Streaming event-based JSON reader.  <code>PORT-OR-GENERATOR</code> default value is the value returned by <code>current-input-port</code>.  It must be a textual input port or a generator of characters.  <code>json-generator</code> returns a generator of Scheme objects, each of which must be one of:</p>
         <ul>
             <li><p><code>'array-start</code> symbol denoting that an array should be constructed.</p></li>
             <li><p><code>'array-end</code> symbol denoting that the construction of the array for which the last <code>'array-start</code> was generated and not closed is finished.</p></li>
@@ -98,13 +98,13 @@
         </ul>
         <p>In the case where nesting of arrays or objects reaches the value returned by the parameter <code>json-nesting-depth-limit</code>, the generator must raise an object that satisfies the predicate <code>json-error?</code></p>
         <p>In cases where the JSON is invalid, the generator returned by <code>json-generator</code> should raise an object that satisfies the predicate <code>json-error?</code>.</p>
-        <p>Otherwise, if <code>PORT</code> contains valid JSON text, the generator returned by <code>json-generator</code> must yield an end-of-file object in two situations:</p>
+        <p>Otherwise, if <code>PORT-OR-GENERATOR</code> contains valid JSON text, the generator returned by <code>json-generator</code> must yield an end-of-file object in two situations:</p>
         <ul>
             <li>The first time the generator returned by <code>json-generator</code> is called, it returns an object that is a boolean, a number, a string or the symbol <code>'null</code>.</li>
             <li>The first time the generator returned by <code>json-generator</code> is called, it returns a symbol that is not the symbol <code>'null</code>.  When the underlying JSON text is valid, it should be the symbol starting a structure: <code>'object-start</code> or <code>'array-start</code>.  The end-of-file object is generated when that structure is finished.</li>
         </ul>
 
-        <p>In other words, the generator returned by <code>json-generator</code> will parse at most one JSON value or one top-level structure.  If <code>PORT</code> is not finished, as in the case of <a href="http://jsonlines.org/">JSON lines</a>, the user should call <code>json-generator</code> again with the same <code>PORT</code>.</p>
+        <p>In other words, the generator returned by <code>json-generator</code> will parse at most one JSON value or one top-level structure.  If <code>PORT</code> is not finished, as in the case of <a href="http://jsonlines.org/">JSON lines</a>, the user should call <code>json-generator</code> again with the same <code>PORT-OR-GENERATOR</code>.</p>
 
         <h4>Examples</h4>
 
@@ -140,8 +140,6 @@
             <li><code>PORT-OR-GENERATOR</code> yields an object that satisfies the predicate <code>eof-object?</code></li>
             <li>All structures, array or object, that were started have ended.  The returned object is <code>(PROC obj SEED)</code> where <code>obj</code> is the object returned by <code>ARRAY-END</code> or <code>OBJECT-END</code></li>
         </ul>
-        <p>The behavior of <code>json-fold</code> is only specified when <code>PORT-OR-GENERATOR</code> follows the <code>json-generator</code> protocol.</p>
-        <p>Otherwise, the behavior of <code>json-fold</code> is unspecified.</p>
 
         <h4 id="json-fold-example">Example</h4>
 
