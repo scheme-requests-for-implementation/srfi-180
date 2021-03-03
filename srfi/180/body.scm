@@ -1,5 +1,6 @@
 (define (pk . args)
-  (write args)(newline)
+  (write args)
+  (newline)
   (car (reverse args)))
 
 (define json-number-of-character-limit (make-parameter +inf.0))
