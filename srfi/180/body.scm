@@ -1,5 +1,6 @@
 (define (pk . args)
-  (write args)(newline)
+  (write args)
+  (newline)
   (car (reverse args)))
 
 (define json-number-of-character-limit (make-parameter +inf.0))
@@ -28,8 +29,7 @@
 (define (expect value other)
   (when (eof-object? value)
     (raise (make-json-error "Unexpected end-of-file.")))
-  (assume (char? value))
-  (assume (char? other))
+  (assume (and (char? value) (char? other)) "invalid argument" '%json-tokens expect value other)
   (unless (char=? value other)
     (raise (make-json-error "Unexpected character."))))
 
@@ -192,7 +192,7 @@
           (loop (generator) (cons char out)))))
 
   ;; gist
-  (assume (procedure? generator))
+  (assume (procedure? generator) "invalid argument" generator)
 
   (let ((char (generator)))
     (if (eof-object? char)
@@ -332,7 +332,7 @@
 
   ;; gist
 
-  (assume (procedure? tokens))
+  (assume (procedure? tokens) "invalid argument" %json-generator tokens)
 
   (make-trampoline-generator tokens))
 
@@ -726,7 +726,8 @@
       (accumulator '(json-structure . object-end)))
      (else (error "Unexpected error!"))))
 
-  (assume (procedure? accumulator))
+  (assume (procedure? accumulator)
+          "ACCUMULATOR does look like a valid accumulator.")
   (raise-unless-valid? obj)
   (write obj (json-accumulator accumulator)))
 
@@ -743,7 +744,8 @@
     ((obj port-or-accumulator)
      (assume (or (procedure? port-or-accumulator)
                   (and (textual-port? port-or-accumulator)
-                       (output-port? port-or-accumulator))))
+                       (output-port? port-or-accumulator)))
+          "ACCUMULATOR does look like a valid accumulator.")
      (if (procedure? port-or-accumulator)
          (%json-write obj port-or-accumulator)
          (%json-write obj (port->accumulator port-or-accumulator))))))
