@@ -538,7 +538,6 @@
       ((#\tab) (accumulator "\\t"))
       ((#\backspace) (accumulator "\\b"))
       ((#\x0c) (accumulator "\\f"))
-      ((#\x0d) (accumulator "\\r"))
       (else (accumulator char))))
 
   (define (write-json-string string accumulator)
