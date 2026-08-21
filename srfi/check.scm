@@ -1,3 +1,7 @@
+; SPDX-FileCopyrightText: 2026 Amirouche Boubekki
+;
+; SPDX-License-Identifier: MIT
+
 ;; tests helpers
 
 (define (pk . args) ;; peek stuff, debug helper.

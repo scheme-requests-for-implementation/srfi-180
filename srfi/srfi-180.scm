@@ -1,3 +1,7 @@
+; SPDX-FileCopyrightText: 2026 Martin Becze
+;
+; SPDX-License-Identifier: MIT
+
 (library (srfi srfi-180)
 
   (export json-number-of-character-limit

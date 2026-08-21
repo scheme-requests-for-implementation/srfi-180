@@ -1,3 +1,7 @@
+; SPDX-FileCopyrightText: 2026 Amirouche Boubekki
+;
+; SPDX-License-Identifier: MIT
+
 (define-library (srfi 180 checks)
 
   (export i_number_double_huge_neg_exp.json

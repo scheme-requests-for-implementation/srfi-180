@@ -1,3 +1,7 @@
+; SPDX-FileCopyrightText: 2026 Amirouche Boubekki
+;
+; SPDX-License-Identifier: MIT
+
 (define-library (srfi 180)
 
   (export json-number-of-character-limit

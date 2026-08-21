@@ -1,3 +1,7 @@
+; SPDX-FileCopyrightText: 2026 Amirouche Boubekki
+;
+; SPDX-License-Identifier: MIT
+
 (define (pk . args)
   (write args)
   (newline)
